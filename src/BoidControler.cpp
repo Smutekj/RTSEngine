@@ -122,15 +122,20 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     }
     const auto update_time = clock.restart().asMicroseconds();
 
+
     //! apply constraints
     avoidWall(dt);
     const auto wall_calc_time = clock.restart().asMicroseconds();
-
     // wallConstraint(dt);
-    applyExternalForces(dt);
     
     truncateVels();
     const auto truc_vels_time = clock.restart().asMicroseconds();
+
+    applyExternalForces(dt);
+
+    //! apply constraints
+    avoidWall(dt);
+    truncateVels();
 
     updateInactiveGroupInd();
     const auto wtf_time = clock.restart().asMicroseconds();
@@ -616,16 +621,16 @@ void BoidControler::avoidWall(const float dt) {
                 is_touching_wall = true;
                 sf::Vector2f n_wall = {wall.t.y, -wall.t.x};
 
-                // auto dr_to_wall_start = r_selected - wall.from;
-                // auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
-                // bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
-                // if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
-                //     dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
-                //     v_selected += settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[selected] * n_wall *
-                //                       std::pow(dist_to_wall, -4.f) +
-                //                   settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[selected] * wall.t *
-                //                       float(2 * wall_is_opposite - 1);
-                // }
+                auto dr_to_wall_start = r_selected - wall.from;
+                auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
+                bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
+                if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
+                    dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
+                    v_selected += 5000.f*settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[i] * n_wall *
+                                      std::pow(dist_to_wall, -4.f);
+                                //   + settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[i] * wall.t *
+                                //       float(2 * wall_is_opposite - 1);
+                }
 
                 auto v_away_from_surface = n_wall * dot(v_selected, n_wall);
                 if (dot(v_selected, n_wall) < 0) {
@@ -910,6 +915,7 @@ void BoidControler::turn() {
     }
 }
 
+//! \brief truncates velocities so that they are no larger than corresponding max_speed  
 void BoidControler::truncateVels() {
     for (const auto ind : world_.active_inds) {
         const auto velocity = world_.velocities_[ind];

@@ -7,12 +7,11 @@ namespace FOW {
 #include <array>
 #include <limits>
 
-//!
-namespace Detail {
+//! constexpr signel iteration of newton Raphson
 float constexpr sqrtNewtonRaphson(float x, float curr, float prev) {
     return curr == prev ? curr : sqrtNewtonRaphson(x, 0.5f * (curr + x / curr), curr);
 }
-} // namespace Detail
+
 
 /*
  * Constexpr version of the square root
@@ -22,13 +21,13 @@ float constexpr sqrtNewtonRaphson(float x, float curr, float prev) {
  *   - I stole this from stackoverflow! :D
  */ 
 float constexpr sqrt_static(float x) {
-    return x >= 0 && x < std::numeric_limits<float>::infinity() ? Detail::sqrtNewtonRaphson(x, x, 0)
+    return x >= 0 && x < std::numeric_limits<float>::infinity() ? sqrtNewtonRaphson(x, x, 0)
                                                                 : std::numeric_limits<float>::quiet_NaN();
 }
 
 static constexpr float DY_VISION = 2*Geometry::CELL_SIZE;
 static constexpr int N_STRIPES = Geometry::BOX[1] / DY_VISION;
-static constexpr float R_MAX_VISION = 50;
+static constexpr float R_MAX_VISION = 150;
 static constexpr int N_MAX_DELTA_STRIPEIND = static_cast<int>(R_MAX_VISION / DY_VISION);
 
 template <int N> struct DeltaY {
@@ -56,6 +55,7 @@ class FogOfWar {
     float dy_;
     float dx_;
     int n_stripes;
+
 
     struct StripeData {
         float min_x;
@@ -86,9 +86,9 @@ class FogOfWar {
 
     std::vector<std::array<FOWGridData, 500>> stripe_ind2fow_data_;
     std::vector<int> stripe_ind2last_;
-    std::vector<int> active_stripe_inds_;
+    std::vector<int> active_stripe_inds_; 
 
-    sf::VertexArray fow_vertices_;
+    sf::VertexArray fow_vertices_;  //! this holds vertices for drawing
 
     FogOfWar(sf::Vector2i box_size, sf::Vector2f cell_size);
 

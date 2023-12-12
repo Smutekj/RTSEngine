@@ -344,11 +344,6 @@ class BoidControler {
         }
     }
 
-    // template<typename MOVESTATE>
-    // void setState(const std::vector<BoidInd>& selection){
-        
-    // }
-
     void setStanding( const std::vector<BoidInd>& selection){
         for (int sel : selection) {
             world_.move_states_[sel] = MoveState::STANDING;
@@ -367,8 +362,8 @@ class BoidControler {
         sf::Vector2f r_center; //! center of explosion
         float vel = 100.f;
         float radius = 0.f;
-        float max_radius = 50.f;
-        int delta_t = 0; //! time since explosion
+        float max_radius = 300.f;
+        float delta_t = 0; //! time since explosion
         // ExplosionData(sf::Vector2f r_center) : r_center(r_center) {}
         // ~ExplosionData() = default;
     };
@@ -380,16 +375,28 @@ class BoidControler {
 
         std::vector<int> to_delete;
         for(auto& [i, explosion]  : explosions_){
-            explosion.radius += explosion.vel * dt;
+            explosion.radius = explosion.vel * (std::exp(explosion.delta_t *0.3f) - 1);
+            explosion.delta_t += dt;
             const auto& neighbours = ns_.getNeighboursIndsFull(explosion.r_center, explosion.radius);
             for(const auto neighbour : neighbours){
                 const auto dr = world_.r_coords_[neighbour] - explosion.r_center;
                 const auto dr_norm2 = norm2(dr);
-                world_.velocities_[neighbour] += 52000.f * dr / (std::sqrt(dr_norm2) + 0.0000001f);
+                bool in_front_of_wave = dr_norm2 > 0.5f*explosion.radius*explosion.radius;
+
+                world_.velocities_[neighbour] += in_front_of_wave*100*dt*dr / (std::pow(std::sqrt(dr_norm2) - explosion.radius, 2.f) + 0.01f);
             }
 
             if(explosion.radius > explosion.max_radius){
                 to_delete.push_back(i);
+            }
+        }
+
+        for(const auto ind : world_.active_inds){
+            const auto velocity = world_.velocities_[ind];
+            const auto speed = norm(world_.velocities_[ind]);
+
+            if (speed > 2.f*max_speeds_[ind]) {
+                world_.velocities_[ind] = 2.f*(velocity / speed * max_speeds_[ind]);
             }
         }
 
