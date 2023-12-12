@@ -127,7 +127,8 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     const auto wall_calc_time = clock.restart().asMicroseconds();
 
     // wallConstraint(dt);
-
+    applyExternalForces(dt);
+    
     truncateVels();
     const auto truc_vels_time = clock.restart().asMicroseconds();
 
@@ -187,6 +188,15 @@ void BoidControler::formFormation(const sf::Vector2f center, const sf::Vector2f 
         index++;
     }
 }
+
+//! this is stupid and will probably not use it anyway 
+void BoidControler::addExplosion(const sf::Vector2f center) {
+    auto n_explosions = explosions_.size();
+    ExplosionData e_data;
+    e_data.r_center = center;
+    explosions_[n_explosions] = e_data;
+}
+
 
 struct ThreadWork {
     std::vector<int> data_id;

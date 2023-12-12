@@ -8,6 +8,8 @@
 #include <memory>
 #include <deque>
 #include <unordered_set>
+#include <unordered_map>
+
 
 #include "SFML/Graphics.hpp"
 #include "core.h"
@@ -256,7 +258,6 @@ class BoidControler {
 
     CommandGroupManager commander_groups_;
 
-
     std::vector<bool> is_turning;
     std::vector<float> turn_rates_;
     std::vector<float>& orientation_;
@@ -361,7 +362,42 @@ class BoidControler {
                        const uint8_t n_collumns = 5);
     void attack(float dt);
 
+
+    struct ExplosionData{
+        sf::Vector2f r_center; //! center of explosion
+        float vel = 100.f;
+        float radius = 0.f;
+        float max_radius = 50.f;
+        int delta_t = 0; //! time since explosion
+        // ExplosionData(sf::Vector2f r_center) : r_center(r_center) {}
+        // ~ExplosionData() = default;
+    };
+    std::unordered_map<int, ExplosionData> explosions_; 
+    void addExplosion(const sf::Vector2f center);
+
   private:
+    void applyExternalForces(float dt){
+
+        std::vector<int> to_delete;
+        for(auto& [i, explosion]  : explosions_){
+            explosion.radius += explosion.vel * dt;
+            const auto& neighbours = ns_.getNeighboursIndsFull(explosion.r_center, explosion.radius);
+            for(const auto neighbour : neighbours){
+                const auto dr = world_.r_coords_[neighbour] - explosion.r_center;
+                const auto dr_norm2 = norm2(dr);
+                world_.velocities_[neighbour] += 52000.f * dr / (std::sqrt(dr_norm2) + 0.0000001f);
+            }
+
+            if(explosion.radius > explosion.max_radius){
+                to_delete.push_back(i);
+            }
+        }
+
+        for(const auto ind : to_delete){
+            explosions_.erase(ind);            
+        }
+    }
+
     void avoid(float dt);
     void repulseBoids(float dt);
     void repulseBoidsNeighbourList(float dt);

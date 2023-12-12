@@ -99,8 +99,10 @@ class NeighbourSearcher {
     NeighbourSearcher(sf::Vector2f box_size, float max_dist, BoidWorld& world);
 
     std::vector<int> getNeighboursInds(sf::Vector2f coords, const float r_max2);
+    std::vector<int> getNeighboursIndsFull(sf::Vector2f r, const float r_max);
 
     std::vector<int>& getNeighbourInds(int boid_ind, const float r_max2);
+    
     const std::array<NeighbourData, N_MAX_AGENTS_IN_CELL>& getNeighbourData(const int boid_ind,
                                                                             const float r_max2) const;
     void addOnGrid(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii);

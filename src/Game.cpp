@@ -293,7 +293,11 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
         }
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::F)) {
-        bc_->formFormation(mouse_coords, {0, 0}, selection);
+        bc_->formFormation(window.mapPixelToCoords(sf::Mouse::getPosition(window)), {0, 0}, selection);
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::E) &&  explosion_time.getElapsedTime().asSeconds()>0.05f) {
+        bc_->addExplosion(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
+        explosion_time.restart();
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::B)) {
         bulding = true;

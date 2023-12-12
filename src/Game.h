@@ -183,6 +183,9 @@ class Game {
     sf::Clock frame_clock;
     int frame_i = 0;
 
+    sf::Clock explosion_time;
+    float e_time;
+
   public:
     UnitCreatorSettings uc_settings_;
 
