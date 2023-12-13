@@ -518,17 +518,21 @@ void PathFinder::doPathFinding(const std::vector<sf::Vector2f> r_coords, const s
     // findSubOptimalPathCenters(r_start, r_end, max_radius_of_agent, funnel);
 
     funnel.funnel.push_back({r_start, r_start});
+
     std::reverse(funnel.funnel.begin(), funnel.funnel.end()); //! Should just use deque ...
     funnel.funnel.push_back({r_end, r_end});
-    const auto path_and_portals = pathFromFunnel(r_start, r_end, bc.radii_[agent_indices[0]], funnel);
+    auto path_and_portals = pathFromFunnel(r_start, r_end, bc.radii_[agent_indices[0]], funnel);
 
     // const auto& selected_inds_in_start_triangle = start_tri2indices.at(start_tri_ind);
     for (int i = 0; i < agent_indices.size(); ++i) {
         const auto ind = agent_indices[i];
         funnel.funnel[0] = {r_coords[i], r_coords[i]};
-        const auto& path = path_and_portals.path;
-        const auto& portals = path_and_portals.portals;
-
+        auto& path = path_and_portals.path;
+        auto& portals = path_and_portals.portals;
+        if(path.back() == path[path.size() - 2]){
+            path.pop_back();
+            portals.pop_back();
+        }
         bc.setPathData(ind, path.at(1), portals.at(1));
         // if (path.size() >= 3) {
         //     bc.setPathDataNext(ind, path.at(2), portals.at(2));
@@ -1359,7 +1363,7 @@ void PathFinder::findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r_
 void PathFinder::findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r_end, float radius, FunnelData& funnel,
                                            const int thread_id) {
 
-    radius = radius * 1.2f;
+    // radius = radius ;
     const auto& triangles = cdt_->triangles_;
     const auto& vertices = cdt_->vertices_;
     const auto& rtg_ = *p_rtg_;
