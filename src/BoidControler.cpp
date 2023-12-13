@@ -210,7 +210,9 @@ struct ThreadWork {
 
 std::array<ThreadWork, 12> thread_work;
 
-void BoidControler::repulseBoids(float dt) {
+
+//! \brief evaluates interaction between pairs of boids based in pair_list 
+void BoidControler::repulseBoidsPairList(float dt) {
 
     const auto& r_coords = world_.r_coords_;
     const auto& vs = world_.velocities_;
@@ -258,7 +260,6 @@ void BoidControler::repulseBoids(float dt) {
     // }
 
 
-//! Force calculation is separated into two for cycles to avoid data race
 #pragma omp parallel num_threads(4)
 {
     for(int thread_id = 0; thread_id < 2; ++thread_id){
@@ -1100,3 +1101,37 @@ void BoidControler::removeHoldingAgents( const std::vector<int>& selection) {
     }
     p_ns_holding_->addOnGrid(r_coords, radii_, hold_inds_);
 }
+
+void BoidControler::applyExternalForces(float dt){
+
+        std::vector<int> to_delete;
+        for(auto& [i, explosion]  : explosions_){
+            explosion.radius = explosion.vel * (std::exp(explosion.delta_t *0.3f) - 1);
+            explosion.delta_t += dt;
+            const auto& neighbours = ns_.getNeighboursIndsFull(explosion.r_center, explosion.radius);
+            for(const auto neighbour : neighbours){
+                const auto dr = world_.r_coords_[neighbour] - explosion.r_center;
+                const auto dr_norm2 = norm2(dr);
+                bool in_front_of_wave = dr_norm2 > 0.5f*explosion.radius*explosion.radius;
+
+                world_.velocities_[neighbour] += in_front_of_wave*100*dt*dr / (std::pow(std::sqrt(dr_norm2) - explosion.radius, 2.f) + 0.01f);
+            }
+
+            if(explosion.radius > explosion.max_radius){
+                to_delete.push_back(i);
+            }
+        }
+
+        for(const auto ind : world_.active_inds){
+            const auto velocity = world_.velocities_[ind];
+            const auto speed = norm(world_.velocities_[ind]);
+
+            if (speed > 2.f*max_speeds_[ind]) {
+                world_.velocities_[ind] = 2.f*(velocity / speed * max_speeds_[ind]);
+            }
+        }
+
+        for(const auto ind : to_delete){
+            explosions_.erase(ind);            
+        }
+    }

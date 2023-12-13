@@ -17,6 +17,8 @@
 #include "Settings.h"
 #include "NeighbourSearcher.h"
 
+
+
 class DebugInfo;
 class BoidWorld;
 class NeighbourSearcher;
@@ -175,13 +177,10 @@ struct ControlForces {
 };
 
 
-//! TODO: I should refactor it into physics and navigation part (physics does agents interaction + walls,
-//! TODO:  navigation does checking whether agents passed point on a path...)  
-
-//! \class is responsible for physics of collidable agents with themselves + with walls
-//! \class each step pair list of interacting agents gets calculated 
-//! \class the pair list is used for forces calculation
-//! \class furthermore 
+//! TODO: I should refactor it into physics and navigation part (physics does agents interaction + walls
+//! TODO:  and navigation does checking whether agents passed point on a path...)  
+//! \class is responsible for physics and neighbour searching of collidable agents with themselves + with walls
+//! \note everything is on one place right now because it is easier to tweek this way and I don't know yet what type of forces I exactly want
 class BoidControler {
 
     BoidControlerSettings2 settings_; //! contains data that I want to through UI at runtime (mainly proportions of
@@ -253,14 +252,15 @@ class BoidControler {
 
     BoidControlerSettings2& getSettings() { return settings_; }
 
-    std::vector<sf::Vector2f> standing_pos_;
+    std::vector<sf::Vector2f> standing_pos_;    //! position where the agent should return after being pushed
 
+    CommandGroupManager commander_groups_;    
 
-    CommandGroupManager commander_groups_;
-
-    std::vector<bool> is_turning;
+    //! stuff related to turning and orientation
+    std::vector<bool> is_turning;               
     std::vector<float> turn_rates_;
     std::vector<float>& orientation_;
+    //!
     std::vector<BoidInd> attack_targets_;
 
     //! Holds data relating to clusters of HOLDING particles
@@ -371,42 +371,10 @@ class BoidControler {
     void addExplosion(const sf::Vector2f center);
 
   private:
-    void applyExternalForces(float dt){
-
-        std::vector<int> to_delete;
-        for(auto& [i, explosion]  : explosions_){
-            explosion.radius = explosion.vel * (std::exp(explosion.delta_t *0.3f) - 1);
-            explosion.delta_t += dt;
-            const auto& neighbours = ns_.getNeighboursIndsFull(explosion.r_center, explosion.radius);
-            for(const auto neighbour : neighbours){
-                const auto dr = world_.r_coords_[neighbour] - explosion.r_center;
-                const auto dr_norm2 = norm2(dr);
-                bool in_front_of_wave = dr_norm2 > 0.5f*explosion.radius*explosion.radius;
-
-                world_.velocities_[neighbour] += in_front_of_wave*100*dt*dr / (std::pow(std::sqrt(dr_norm2) - explosion.radius, 2.f) + 0.01f);
-            }
-
-            if(explosion.radius > explosion.max_radius){
-                to_delete.push_back(i);
-            }
-        }
-
-        for(const auto ind : world_.active_inds){
-            const auto velocity = world_.velocities_[ind];
-            const auto speed = norm(world_.velocities_[ind]);
-
-            if (speed > 2.f*max_speeds_[ind]) {
-                world_.velocities_[ind] = 2.f*(velocity / speed * max_speeds_[ind]);
-            }
-        }
-
-        for(const auto ind : to_delete){
-            explosions_.erase(ind);            
-        }
-    }
+    void applyExternalForces(float dt);
 
     void avoid(float dt);
-    void repulseBoids(float dt);
+    void repulseBoidsPairList(float dt);
     void repulseBoidsNeighbourList(float dt);
 
     void avoidHoldingAgents(float dt, sf::RenderWindow& window);
