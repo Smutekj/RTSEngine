@@ -15,10 +15,12 @@ FogOfWar::FogOfWar(sf::Vector2i box_size, sf::Vector2f cell_size)
     vision.setFillColor({0, 0, 1, 69});
 }
 
-
-void FogOfWar::update(const std::vector<sf::Vector2f>& vision_data, const std::vector<int>& active_inds) {
+//! \brief produces union of vision rectangles from each agent in \p active_inds  
+//! \param r_coords
+//! \param active_inds
+//! \note so far it is assumed that all agents share the same viison range
+void FogOfWar::update(const std::vector<sf::Vector2f>& r_coords, const std::vector<int>& active_inds) {
         constexpr float radius = FOW::R_MAX_VISION;
-        // const auto dy = FOW::DY_VISION;
 
         for (int i = 0; i < n_stripes; ++i) {
             stripes_[i].clear();
@@ -26,7 +28,7 @@ void FogOfWar::update(const std::vector<sf::Vector2f>& vision_data, const std::v
         }
 
         for (const auto boid_ind : active_inds) {
-            const auto r = vision_data[boid_ind];
+            const auto r = r_coords[boid_ind];
             const int stripe_ind = std::floor(r.y / dy_);
 
             const int di = std::floor(radius / dy_);
@@ -35,8 +37,7 @@ void FogOfWar::update(const std::vector<sf::Vector2f>& vision_data, const std::v
 
             for (int ind = i_min + 1; ind < i_max; ++ind) {
                 const auto delta_i = std::abs(ind - stripe_ind);
-                const auto delta_x =
-                    FOW::DELTAS.arr[delta_i]; // std::sqrt(radius * radius - (dy_ * delta_i) * (dy_ * delta_i));
+                const auto delta_x = FOW::DELTAS.arr[delta_i]; // std::sqrt(radius * radius - (dy_ * delta_i) * (dy_ * delta_i));
                 addToStripe(ind, r.x - delta_x, r.x + delta_x);
             }
 
@@ -45,6 +46,10 @@ void FogOfWar::update(const std::vector<sf::Vector2f>& vision_data, const std::v
 
 
 
+//! \brief adds interval [ \p x_left, \p x_right ] to the overall intersection of visions in stripe \p stripe_ind
+//! \param stripe_ind
+//! \param x_rleft
+//! \param x_right
 void FogOfWar::addToStripe(int stripe_ind, float x_left, float x_right) {
         auto& stripe = stripes_.at(stripe_ind);
 

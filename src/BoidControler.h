@@ -8,12 +8,16 @@
 #include <memory>
 #include <deque>
 #include <unordered_set>
+#include <unordered_map>
+
 
 #include "SFML/Graphics.hpp"
 #include "core.h"
 #include "queue"
 #include "Settings.h"
 #include "NeighbourSearcher.h"
+
+
 
 class DebugInfo;
 class BoidWorld;
@@ -173,13 +177,10 @@ struct ControlForces {
 };
 
 
-//! TODO: I should refactor it into physics and navigation part (physics does agents interaction + walls,
-//! TODO:  navigation does checking whether agents passed point on a path...)  
-
-//! \class is responsible for physics of collidable agents with themselves + with walls
-//! \class each step pair list of interacting agents gets calculated 
-//! \class the pair list is used for forces calculation
-//! \class furthermore 
+//! TODO: I should refactor it into physics and navigation part (physics does agents interaction + walls
+//! TODO:  and navigation does checking whether agents passed point on a path...)  
+//! \class is responsible for physics and neighbour searching of collidable agents with themselves + with walls
+//! \note everything is on one place right now because it is easier to tweek this way and I don't know yet what type of forces I exactly want
 class BoidControler {
 
     BoidControlerSettings2 settings_; //! contains data that I want to through UI at runtime (mainly proportions of
@@ -251,15 +252,15 @@ class BoidControler {
 
     BoidControlerSettings2& getSettings() { return settings_; }
 
-    std::vector<sf::Vector2f> standing_pos_;
+    std::vector<sf::Vector2f> standing_pos_;    //! position where the agent should return after being pushed
 
+    CommandGroupManager commander_groups_;    
 
-    CommandGroupManager commander_groups_;
-
-
-    std::vector<bool> is_turning;
+    //! stuff related to turning and orientation
+    std::vector<bool> is_turning;               
     std::vector<float> turn_rates_;
     std::vector<float>& orientation_;
+    //!
     std::vector<BoidInd> attack_targets_;
 
     //! Holds data relating to clusters of HOLDING particles
@@ -343,11 +344,6 @@ class BoidControler {
         }
     }
 
-    // template<typename MOVESTATE>
-    // void setState(const std::vector<BoidInd>& selection){
-        
-    // }
-
     void setStanding( const std::vector<BoidInd>& selection){
         for (int sel : selection) {
             world_.move_states_[sel] = MoveState::STANDING;
@@ -361,9 +357,24 @@ class BoidControler {
                        const uint8_t n_collumns = 5);
     void attack(float dt);
 
+
+    struct ExplosionData{
+        sf::Vector2f r_center; //! center of explosion
+        float vel = 100.f;
+        float radius = 0.f;
+        float max_radius = 300.f;
+        float delta_t = 0; //! time since explosion
+        // ExplosionData(sf::Vector2f r_center) : r_center(r_center) {}
+        // ~ExplosionData() = default;
+    };
+    std::unordered_map<int, ExplosionData> explosions_; 
+    void addExplosion(const sf::Vector2f center);
+
   private:
+    void applyExternalForces(float dt);
+
     void avoid(float dt);
-    void repulseBoids(float dt);
+    void repulseBoidsPairList(float dt);
     void repulseBoidsNeighbourList(float dt);
 
     void avoidHoldingAgents(float dt, sf::RenderWindow& window);

@@ -36,10 +36,56 @@ std::vector<int> NeighbourSearcher::getNeighboursInds(sf::Vector2f r, const floa
 
     const auto cell_ind = s_grid_->coordToCell(r);
     s_grid_->calcNearestCells(cell_ind, nearest_cells, last_nearest_cell_ind);
-    nearest_cells[last_nearest_cell_ind] = cell_ind;
+    nearest_cells[last_nearest_cell_ind] = cell_ind; 
     last_nearest_cell_ind++;
     for (int i = 0; i < last_nearest_cell_ind; ++i) {
         const auto cell_ind_neighbour = nearest_cells[i];
+        const auto& cell = cell2boid_inds2_[cell_ind_neighbour];
+        const auto last_in_cell = cell.back().ind;
+        for (int i_cell = 0; i_cell < last_in_cell; ++i_cell) {
+            const auto& neighbour_ind = cell[i_cell].ind;
+            const auto d2 = dist2(cell[i_cell].r, r);
+            if (d2 <= r_max2) {
+                neighbour_inds.push_back(neighbour_ind);
+            }
+        }
+    }
+
+    return neighbour_inds;
+}
+
+
+std::vector<int> NeighbourSearcher::getNeighboursIndsFull(sf::Vector2f r, const float r_max) {
+    std::vector<int> neighbour_inds;
+
+    const auto& r_coords = boids_->r_coords_;
+    const auto r_max2 = r_max*r_max;
+
+    int last_nearest_cell_ind = 8;
+    std::vector<int> nearest_cells;
+
+    const auto cell_ind = s_grid_->coordToCell(r);
+    const auto cell_coords = s_grid_->cellCoords(cell_ind);
+
+
+    int j_max = cell_coords.y + std::ceil(r_max/ s_grid_->cell_size_.y) ;
+    int j_min = cell_coords.y - std::ceil(r_max/ s_grid_->cell_size_.y) ;
+    j_max = std::min(j_max, s_grid_->n_cells_.y-1);
+    j_min = std::max(j_min, 0);
+
+    for(int j = j_min; j <= j_max; ++j){
+        const float dy = (j - cell_coords.y) * s_grid_->cell_size_.y; 
+        int i_max = cell_coords.x + std::ceil(std::sqrt(r_max2 - dy*dy));
+        int i_min = cell_coords.x - (i_max - cell_coords.x);
+        i_max = std::min(i_max, s_grid_->n_cells_.x-1);
+        i_min = std::max(i_min, 0);
+
+        for(int i = i_min; i <= i_max; ++i){
+            nearest_cells.push_back(i + j*s_grid_->n_cells_.x);
+        }
+    }
+
+    for (const auto cell_ind_neighbour : nearest_cells) {
         const auto& cell = cell2boid_inds2_[cell_ind_neighbour];
         const auto last_in_cell = cell.back().ind;
         for (int i_cell = 0; i_cell < last_in_cell; ++i_cell) {

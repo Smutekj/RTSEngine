@@ -21,7 +21,7 @@ set(game_objs MapGrid.cpp EdgesFinder1D.cpp
 Edges.cpp Selection.cpp  HealthSystem.cpp  Game.cpp 
 AttackSystem.cpp BloomEffect.cpp FogOfWar.cpp)
 
-set(game_hdrs  MapGrid.h EdgesFinder1D.h
+set(game_hdrs MapGrid.h EdgesFinder1D.h
 Edges.h  Selection.h  HealthSystem.h  Game.h 
 AttackSystem.h BloomEffect.hpp FogOfWar.h)
 

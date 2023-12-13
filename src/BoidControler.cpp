@@ -122,14 +122,20 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     }
     const auto update_time = clock.restart().asMicroseconds();
 
+
     //! apply constraints
     avoidWall(dt);
     const auto wall_calc_time = clock.restart().asMicroseconds();
-
     // wallConstraint(dt);
-
+    
     truncateVels();
     const auto truc_vels_time = clock.restart().asMicroseconds();
+
+    applyExternalForces(dt);
+
+    //! apply constraints
+    avoidWall(dt);
+    truncateVels();
 
     updateInactiveGroupInd();
     const auto wtf_time = clock.restart().asMicroseconds();
@@ -188,6 +194,15 @@ void BoidControler::formFormation(const sf::Vector2f center, const sf::Vector2f 
     }
 }
 
+//! this is stupid and will probably not use it anyway 
+void BoidControler::addExplosion(const sf::Vector2f center) {
+    auto n_explosions = explosions_.size();
+    ExplosionData e_data;
+    e_data.r_center = center;
+    explosions_[n_explosions] = e_data;
+}
+
+
 struct ThreadWork {
     std::vector<int> data_id;
     std::vector<std::pair<int, int>> from_to;
@@ -195,7 +210,9 @@ struct ThreadWork {
 
 std::array<ThreadWork, 12> thread_work;
 
-void BoidControler::repulseBoids(float dt) {
+
+//! \brief evaluates interaction between pairs of boids based in pair_list 
+void BoidControler::repulseBoidsPairList(float dt) {
 
     const auto& r_coords = world_.r_coords_;
     const auto& vs = world_.velocities_;
@@ -243,7 +260,6 @@ void BoidControler::repulseBoids(float dt) {
     // }
 
 
-//! Force calculation is separated into two for cycles to avoid data race
 #pragma omp parallel num_threads(4)
 {
     for(int thread_id = 0; thread_id < 2; ++thread_id){
@@ -606,16 +622,16 @@ void BoidControler::avoidWall(const float dt) {
                 is_touching_wall = true;
                 sf::Vector2f n_wall = {wall.t.y, -wall.t.x};
 
-                // auto dr_to_wall_start = r_selected - wall.from;
-                // auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
-                // bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
-                // if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
-                //     dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
-                //     v_selected += settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[selected] * n_wall *
-                //                       std::pow(dist_to_wall, -4.f) +
-                //                   settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[selected] * wall.t *
-                //                       float(2 * wall_is_opposite - 1);
-                // }
+                auto dr_to_wall_start = r_selected - wall.from;
+                auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
+                bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
+                if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
+                    dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
+                    v_selected += 5000.f*settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[i] * n_wall *
+                                      std::pow(dist_to_wall, -4.f);
+                                //   + settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[i] * wall.t *
+                                //       float(2 * wall_is_opposite - 1);
+                }
 
                 auto v_away_from_surface = n_wall * dot(v_selected, n_wall);
                 if (dot(v_selected, n_wall) < 0) {
@@ -900,6 +916,7 @@ void BoidControler::turn() {
     }
 }
 
+//! \brief truncates velocities so that they are no larger than corresponding max_speed  
 void BoidControler::truncateVels() {
     for (const auto ind : world_.active_inds) {
         const auto velocity = world_.velocities_[ind];
@@ -1084,3 +1101,37 @@ void BoidControler::removeHoldingAgents( const std::vector<int>& selection) {
     }
     p_ns_holding_->addOnGrid(r_coords, radii_, hold_inds_);
 }
+
+void BoidControler::applyExternalForces(float dt){
+
+        std::vector<int> to_delete;
+        for(auto& [i, explosion]  : explosions_){
+            explosion.radius = explosion.vel * (std::exp(explosion.delta_t *0.3f) - 1);
+            explosion.delta_t += dt;
+            const auto& neighbours = ns_.getNeighboursIndsFull(explosion.r_center, explosion.radius);
+            for(const auto neighbour : neighbours){
+                const auto dr = world_.r_coords_[neighbour] - explosion.r_center;
+                const auto dr_norm2 = norm2(dr);
+                bool in_front_of_wave = dr_norm2 > 0.5f*explosion.radius*explosion.radius;
+
+                world_.velocities_[neighbour] += in_front_of_wave*100*dt*dr / (std::pow(std::sqrt(dr_norm2) - explosion.radius, 2.f) + 0.01f);
+            }
+
+            if(explosion.radius > explosion.max_radius){
+                to_delete.push_back(i);
+            }
+        }
+
+        for(const auto ind : world_.active_inds){
+            const auto velocity = world_.velocities_[ind];
+            const auto speed = norm(world_.velocities_[ind]);
+
+            if (speed > 2.f*max_speeds_[ind]) {
+                world_.velocities_[ind] = 2.f*(velocity / speed * max_speeds_[ind]);
+            }
+        }
+
+        for(const auto ind : to_delete){
+            explosions_.erase(ind);            
+        }
+    }
