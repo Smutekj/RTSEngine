@@ -499,8 +499,14 @@ void PathFinder::updatePaths(const std::vector<sf::Vector2f>& r_coords, BoidCont
     to_update_groups_.resize(to_update_groups_.size() - n_paths_found);
 }
 
-
-
+//! \brief does exactly one astar which produces 'funnel' of triangles that is common for all \p agent_indices
+//! \brief the \p bc object is then updated with new target points 
+//! \param r_coords
+//! \param r_end   final target position
+//! \param bc       Boidcontroler object
+//! \param max_radius_of_agent 
+//! \param agent_indices  
+//! \param thread_id 
 void PathFinder::doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end, BoidControler& bc,
                          const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id) {
     assert(r_coords.size() > 0);
@@ -562,6 +568,7 @@ void PathFinder::doPathFinding(const std::vector<sf::Vector2f> r_coords, const s
 }
 
 //! \brief divides agents by triangles and for each triangle we do one Astar search
+//! \note the Astar itself is done later, this just informs the class what paths are needed
 void PathFinder::issuePaths(BoidControler& bc, const std::vector<sf::Vector2f>& r_coords,
                             const std::vector<float>& radii, const std::vector<int>& selection,
                             const sf::Vector2f r_end) {
@@ -754,6 +761,7 @@ PathFinder::PathAndPortals PathFinder::calcPathOfSelection(BoidControler& bc, co
 //! \returns returns 1 if there are no walls in between points and number smaller than 1 otherwise
 //! \returns in case a wall is hit, the number represents how far away from the start point the point of hit lies
 //! \returns(the contact point can be found like: from + result * (from - to) / norm(from - to)
+//! TODO: 
 float PathFinder::rayCast(const sf::Vector2f& from, const sf::Vector2f& to) const {
     const auto& triangles = cdt_->triangles_;
     const auto& vertices = cdt_->vertices_;
