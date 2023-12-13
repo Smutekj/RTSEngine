@@ -170,7 +170,7 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
                 std::chrono::high_resolution_clock path_finding_clock;
                 const auto start = path_finding_clock.now();
                 pf.issuePaths(*bc_, world_.r_coords_, bc_->radii_, selection, click_position);
-                // pf.calcPathOfSelection(*bc_, world_.r_coords_, bc_->radii_, selection, click_position);
+                // auto path_and_portals = pf.calcPathOfSelection(*bc_, world_.r_coords_, bc_->radii_, selection, click_position);
                 // path = path_and_portals.path;
                 // portals = path_and_portals.portals;
                 const auto time =
@@ -486,7 +486,7 @@ void drawPath(sf::RenderWindow& window, const std::vector<sf::Vector2f>& path, c
     sf::RectangleShape line;
     line.setFillColor(sf::Color::Cyan);
     sf::CircleShape node;
-    node.setRadius(3.f);
+    node.setRadius(1.f);
     node.setFillColor(sf::Color::Cyan);
 
     sf::RectangleShape portal_line;
@@ -499,14 +499,14 @@ void drawPath(sf::RenderWindow& window, const std::vector<sf::Vector2f>& path, c
         const auto angle = 180.f / (M_PIf)*std::acos(dot(dr / dr_norm, {0, 1})) * (2.f * (dr.x < 0.f) - 1.f);
         const auto angle2 = 180.f / (M_PIf)*std::acos(dot(dr2, {0, 1})) * (2.f * (dr2.x < 0.f) - 1.f);
         line.setPosition(path.at(i - 1));
-        line.setSize({3, dr_norm});
+        line.setSize({1, dr_norm});
         line.setRotation(angle);
 
         portal_line.setPosition(portals[i].from);
         portal_line.setSize({1, portals[i].l});
         portal_line.setRotation(angle2);
 
-        node.setPosition(path.at(i) - sf::Vector2f{3.f, 3.f});
+        node.setPosition(path.at(i) - sf::Vector2f{1.f, 1.f});
 
         window.draw(portal_line);
         window.draw(line);
@@ -545,5 +545,5 @@ void Game::draw(sf::RenderWindow& window) {
 
     buildings.draw(window);
     p_fow_->draw(window);
-    // drawPath(window, path, portals);
+    drawPath(window, path, portals);
 }

@@ -379,7 +379,7 @@ void PathFinder::updatePaths(const std::vector<sf::Vector2f>& r_coords, BoidCont
                              const sf::Int64 available_time) {
 
     sf::Clock time;
-    const int n_threads = std::thread::hardware_concurrency();
+    const int n_threads = std::thread::hardware_concurrency() - 6;
     threads_.resize(0);
 
     //! remove duplicates;
@@ -558,6 +558,7 @@ void PathFinder::doPathFinding(const std::vector<sf::Vector2f> r_coords, const s
     // if (time_of_pathfinding > 500) {
     //     std::cout << "astar took: " << time_of_pathfinding << " us\n";
     // }
+    wtf = path_and_portals;
 }
 
 //! \brief divides agents by triangles and for each triangle we do one Astar search
@@ -689,7 +690,6 @@ PathFinder::PathAndPortals PathFinder::calcPathOfSelection(BoidControler& bc, co
     const auto end_tri_ind = cdt_->findTriangle(r_end, false);
 
     const int n_threads = 12;
-    bool wtf = true;
     std::vector<std::thread> threads;
     threads.reserve(start_tri_inds.size());
     int thread_id = 0;
@@ -745,7 +745,7 @@ PathFinder::PathAndPortals PathFinder::calcPathOfSelection(BoidControler& bc, co
         job.join();
     }
 
-    return result;
+    return wtf;
 }
 
 //! \brief casts a ray connecting points from and to
