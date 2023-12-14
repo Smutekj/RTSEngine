@@ -178,7 +178,7 @@ struct ControlForces {
 
 
 //! TODO: I should refactor it into physics and navigation part (physics does agents interaction + walls
-//! TODO:  and navigation does checking whether agents passed point on a path...)  
+//! TODO: and navigation does checking whether agents passed point on a path...)  
 //! \class is responsible for physics and neighbour searching of collidable agents with themselves + with walls
 //! \note everything is on one place right now because it is easier to tweek this way and I don't know yet what type of forces I exactly want
 class BoidControler {
@@ -263,6 +263,7 @@ class BoidControler {
     //!
     std::vector<BoidInd> attack_targets_;
 
+    // HOLDING CLUSTERs STUFF // 
     //! Holds data relating to clusters of HOLDING particles
     struct Cluster {
         sf::Vector2f center;   //! center of mass of cluster
@@ -300,6 +301,8 @@ class BoidControler {
     void addToClusters( std::vector<int>& selection);
     void removeFromClusters( const std::vector<int>& selection);
     void removeHoldingAgents( const std::vector<int>& selection);
+
+    //----------------------------------------------------// 
 
     BoidControler(BoidWorld* world, NeighbourSearcher* ns, std::shared_ptr<Edges> map, sf::Vector2f box_size);
 
@@ -385,9 +388,26 @@ class BoidControler {
     void push(float dt);
     void wallConstraint(float dt);
     void seek();
-    void turn();
+    void turnAll();
     void truncateVels();
+    
+    bool hasReachedEnd(int selected, const sf::Vector2f dr_to_target);
+    bool needsUpdating(int selected, const sf::Vector2f r);
+    void updateTarget(int selected, const sf::Vector2f r);
+    void stopSeeking(int selected, const sf::Vector2f r);
+
+    struct StuckData{
+        sf::Vector2f orig_coord;
+        sf::Vector2f new_coord;
+        int n_frames = 0;
+    };
+    std::vector<StuckData> stuck_data_;
     bool isStuck(int boid_ind);
+    void turnTowards(int selected, sf::Vector2f direction);
+    void turnBy(int selected, float angle_change);
+    bool neighboursInFrontReachedEnd(int selected, float radius, sf::Vector2f dr_to_target);
+    void finalizeSeek(int selected, sf::Vector2f r, sf::Vector2f dr_to_target);
+
 };
 
 #endif // BOIDS_BOIDCONTROLER_H
