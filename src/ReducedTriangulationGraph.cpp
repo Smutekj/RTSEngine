@@ -1,6 +1,7 @@
 #include "ReducedTriangulationGraph.h"
 
 
+//! \returns minimal width of a triangle inside a corridor 
 float ReducedTriangulationGraph::calcCorridorWidth(
     const std::vector<std::pair<sf::Vector2f, sf::Vector2f>>& funnel) const {
 
