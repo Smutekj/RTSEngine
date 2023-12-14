@@ -203,6 +203,8 @@ class Game {
     std::unique_ptr<FogOfWar> p_fow_;
 
     Buildings buildings;
+    std::vector<sf::Vector2f> path;
+    std::vector<Edgef> portals;
 
     Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2f box_size);
 

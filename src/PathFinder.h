@@ -220,6 +220,9 @@ class PathFinder {
     AstarVertexData calcAstarData(const FunnelFan& portal, const sf::Vector2f r_end);
 
     float rayCast(const sf::Vector2f& from, const sf::Vector2f& to) const;
+
+    public:
+    PathAndPortals wtf;
 };
 
 #endif // BOIDS_PATHFINDER_H

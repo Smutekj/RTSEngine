@@ -13,6 +13,8 @@ BoidControler::BoidControler(BoidWorld* world, NeighbourSearcher* ns, std::share
 
     map_ = map;
 
+    stuck_data_.resize(N_MAX_NAVIGABLE_BOIDS);
+
     forces_.resize(N_MAX_NAVIGABLE_BOIDS);
     path_data_.resize(N_MAX_NAVIGABLE_BOIDS);
 
@@ -73,7 +75,7 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     const auto neighbour_search_time = clock.restart().asMicroseconds();
 
     //    if(steps_since_last_turn >  4) {
-    turn();
+    turnAll();
     const auto turn_time = clock.restart().asMicroseconds();
     //        steps_since_last_turn = 0;
     //    }
@@ -126,14 +128,13 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     //! apply constraints
     avoidWall(dt);
     const auto wall_calc_time = clock.restart().asMicroseconds();
-    // wallConstraint(dt);
     
     truncateVels();
     const auto truc_vels_time = clock.restart().asMicroseconds();
 
     applyExternalForces(dt);
 
-    //! apply constraints
+    //! apply constraints ( we do this twice because we apply external forces after control forces)
     avoidWall(dt);
     truncateVels();
 
@@ -151,9 +152,19 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
 
         std::cout << "repulsion took: " << repulsion_time << " us\n";
         std::cout << "scatter took: " << scatter_time << " us\n";
-        // std::cout << "all took: " << penis.restart().asMicroseconds() << " us\n";
-        // std::cout << "wtf took: " << wtf_time << " us\n";
     }
+}
+
+bool BoidControler::isStuck(int boid_ind){
+    
+    auto& data = stuck_data_[boid_ind];
+    if(data.n_frames++ > 169){
+        data.orig_coord = data.new_coord;
+        data.new_coord = world_.r_coords_[boid_ind];
+        data.n_frames = 0;
+        return dist2(data.new_coord, data.orig_coord) < RHARD*RHARD;
+    }
+    return false;
 }
 
 //! this is stupid and will probably not use it anyway 
@@ -326,7 +337,7 @@ void BoidControler::repulseBoidsNeighbourList(float dt) {
 #pragma omp parallel num_threads(6)
 {
         #pragma omp for 
-        for (int ind_i = 0; ind_i < N_MAX_NAVIGABLE_BOIDS; ++ind_i) {
+        for (int ind_i = 0; ind_i < world_.active_inds.size(); ++ind_i) {
             const auto& n_data = ns_.getNeighbourData(ind_i, 0);
             const auto n_last_neighbour = ns_.last_i[ind_i];
 
@@ -622,16 +633,16 @@ void BoidControler::avoidWall(const float dt) {
                 is_touching_wall = true;
                 sf::Vector2f n_wall = {wall.t.y, -wall.t.x};
 
-                auto dr_to_wall_start = r_selected - wall.from;
-                auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
-                bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
-                if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
-                    dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
-                    v_selected += 5000.f*settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[i] * n_wall *
-                                      std::pow(dist_to_wall, -4.f);
-                                //   + settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[i] * wall.t *
-                                //       float(2 * wall_is_opposite - 1);
-                }
+                // auto dr_to_wall_start = r_selected - wall.from;
+                // auto dist_to_wall = std::abs(dot(dr_to_wall_start, n_wall));
+                // bool wall_is_opposite = dot(dr_to_target, dr_to_wall_start) > 0;
+                // if (dot(dr_to_wall_start, wall.t) > -radius and dot(dr_to_wall_start, wall.t) < wall.l + radius and
+                //     dot(dr_to_wall_start, n_wall) < 1.5 * radius) {
+                //     v_selected += 5000.f*settings_.values_[Behaviour::WALLREPULSE] * max_speeds_[i] * n_wall *
+                //                       std::pow(dist_to_wall, -4.f);
+                //                 //   + settings_.values_[Behaviour::WALLSLIDE] * max_speeds_[i] * wall.t *
+                //                 //       float(2 * wall_is_opposite - 1);
+                // }
 
                 auto v_away_from_surface = n_wall * dot(v_selected, n_wall);
                 if (dot(v_selected, n_wall) < 0) {
@@ -727,6 +738,130 @@ void BoidControler::scatter(const float dt) {
     }
 }
 
+//! \param selected
+//! \param r        position of the selected agent
+//! \returns true if \p selected agent index reached target along the path and needs a new one
+bool BoidControler::needsUpdating(int selected, const sf::Vector2f r){
+    auto& move_target = path_data_[selected].move_target;
+    auto& next_move_target = path_data_[selected].next_move_target;
+    const auto& path_end = path_data_[selected].path_end;
+
+    // if(isStuck(selected)){ return true; } //! we have to call step bro for help
+    if(vequal(move_target, path_end)){ return false; } 
+    
+    auto dr_to_target = move_target - r;
+    const float norm_dr = norm(dr_to_target);
+
+    const auto dr_to_next_target = next_move_target - r;
+    const auto norm_dr_next = norm(dr_to_next_target);
+
+    auto t = next_move_target - move_target;
+    bool can_move_to_next_target = dot(-dr_to_target, t) > 0;
+    bool update_next_target = norm_dr < RHARD && can_move_to_next_target || move_target == next_move_target;
+    const auto closest_point_on_next_portal = closestPointOnEdge(r, path_data_[selected].portal);
+
+    auto& portal = path_data_[selected].portal;
+    const sf::Vector2f n = {-portal.t.y, portal.t.x};
+    if (norm_dr < RHARD || dot(dr_to_target, t) < 0) {
+        update_next_target = true;
+    } else {
+        if (dist2(closest_point_on_next_portal, r) < dist2(r, move_target) && portal.l > 0 &&
+            dist2(closest_point_on_next_portal, r) < 16 * RHARD * RHARD and norm2(t) != 0) {
+            move_target = closest_point_on_next_portal;
+            portal.l = 0;
+            dr_to_target = move_target - r;
+            update_next_target = false;
+        } else if (vequal(move_target, next_move_target) and move_target != path_end) {
+            update_next_target = true;
+        }
+    }
+
+    return update_next_target;
+}
+
+
+//! \brief updates target position of the \p selected agent index
+//! \param selected
+//! \param r        position of the selected agent
+void BoidControler::updateTarget(int selected, const sf::Vector2f r){
+    auto& move_target = path_data_[selected].move_target;
+    auto& next_move_target = path_data_[selected].next_move_target;
+    const auto& path_end = path_data_[selected].path_end;
+
+    const auto dr_to_next_target = next_move_target - r;
+    const auto norm_dr_next = norm(dr_to_next_target);
+
+    move_target = next_move_target;
+    path_data_[selected].portal = path_data_[selected].next_portal;
+
+    if (norm_dr_next > 0) {
+        forces_[selected].seek = dr_to_next_target / norm_dr_next * max_speeds_[selected];
+    }
+      
+    if (next_move_target != path_end) {
+        path_data_[selected].need_path_update = true;
+        need_path_update_.push(selected);
+    } 
+}
+
+
+//! \brief stops moving towards seek target and removes agent from his command group
+//! \param selected
+//! \param r        position of the selected agent
+void BoidControler::stopSeeking(int selected, const sf::Vector2f r){
+    world_.move_states_[selected] = MoveState::STANDING;
+    standing_pos_[selected] = r;
+    n_steps_since_all_in_front_standing_[selected] = 0;
+    commander_groups_.removeFromGroup(selected);
+}
+
+//! \brief one possible stopping condition
+bool BoidControler::neighboursInFrontReachedEnd(int selected, float radius, sf::Vector2f dr_to_target){
+    int n_in_front = 0;
+    int n_in_front_standing = 0;
+    const auto r = world_.r_coords_[selected];
+    const auto& neighbour_inds = ns_.getNeighboursInds(r, radius * radius * 12.f);
+    for (const auto neighbour : neighbour_inds) {
+        const auto d_r = world_.r_coords_[neighbour] - r;
+        if (norm2(d_r) < 9 * radius * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+            if (std::abs(angle_calculator_.angleBetween(d_r, dr_to_target)) < 36) {
+                n_in_front_standing += world_.move_states_[neighbour] == MoveState::STANDING;
+                n_in_front++;
+            }
+        }
+    }
+    return n_in_front!=0 && n_in_front == n_in_front_standing;
+}
+
+void BoidControler::finalizeSeek(int selected, sf::Vector2f r, sf::Vector2f dr_to_target){
+    const auto radius = radii_[selected];
+    const auto path_end = path_data_[selected].path_end;
+
+    auto dist_to_end = dist(path_end, r);
+    if (dist_to_end < 2 * radius) {
+        //! we inform all neighbours in our command group within some radius that they have reached the end 
+        const auto& neighbour_inds = ns_.getNeighboursInds(r, 2.69 * 2.69 * radius * radius);
+        for (const auto neighbour : neighbour_inds) {
+            const auto r_neighbour = world_.r_coords_[neighbour];
+            const auto dist_to_neighbour = dist(r_neighbour, r);
+            if (dist_to_neighbour < 3 * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+                stopSeeking(neighbour,  r_neighbour);
+            }
+        }
+        stopSeeking(selected, r);
+    }
+
+
+    if(neighboursInFrontReachedEnd(selected, radius, dr_to_target)){
+        n_steps_since_all_in_front_standing_[selected]++;
+        if (n_steps_since_all_in_front_standing_[selected] > 3) {
+            stopSeeking(selected, r);
+        }
+    }else{
+        n_steps_since_all_in_front_standing_[selected] = 0;
+    }
+}
+
 //! \brief manages agents movement to their target positions (together with stopping conditions)
 void BoidControler::seek() {
     auto& r_coords = world_.r_coords_;
@@ -736,143 +871,22 @@ void BoidControler::seek() {
 
         if (world_.move_states_[selected] == MoveState::MOVING) {
             const auto& r = r_coords[selected];
-            auto& v = world_.velocities_[selected];
+            const auto& v = world_.velocities_[selected];
+            const auto& move_target = path_data_[selected].move_target;
 
-            auto& move_target = path_data_[selected].move_target;
-            auto& next_move_target = path_data_[selected].next_move_target;
             const auto& path_end = path_data_[selected].path_end;
-
             auto dr_to_target = move_target - r_coords[selected];
             float norm_dr = norm(dr_to_target);
-            forces_[selected].seek = dr_to_target / norm_dr * max_speeds_[selected];
-
-            const auto dr_to_next_target = next_move_target - r_coords[selected];
-            const auto norm_dr_next = norm(dr_to_next_target);
-
-            const auto current_vel = world_.velocities_[selected];
-
-            auto t = next_move_target - move_target;
-            if (norm2(t) != 0) {
-                t /= norm(t);
-            };
-            bool can_move_to_next_target = dot(-dr_to_target, t) > 0;
-            bool update_next_target = norm_dr < RHARD and can_move_to_next_target or move_target == next_move_target;
-            const auto closest_point_on_next_portal = closestPointOnEdge(r, path_data_[selected].portal);
-            const auto a = 0;
-
-            if (is_turning[selected]) {
-                const auto desired_vel = dr_to_target / norm_dr;
-                const auto desired_angle = angle_calculator_.angle(desired_vel);
-                auto d_angle = desired_angle - orientation_[selected];
-                d_angle > 180 ? d_angle = -360 + d_angle : d_angle = d_angle;
-                d_angle < -180 ? d_angle = 360 - d_angle : d_angle = d_angle;
-                auto angle_change = std::min({turn_rates_[selected], d_angle});
-                if (d_angle < 0) {
-                    angle_change = std::max({-turn_rates_[selected], d_angle});
-                }
-                if (std::abs(d_angle) > 0.3f) {
-                    orientation_[selected] += angle_change;
-                    if (orientation_[selected] > 180) {
-                        orientation_[selected] -= 360;
-                    }
-                    if (orientation_[selected] < -180) {
-                        orientation_[selected] += 360;
-                    }
-                } else {
-                    is_turning[selected] = false;
-                }
-            } else {
-
-                auto& portal = path_data_[selected].portal;
-                const sf::Vector2f n = {-portal.t.y, portal.t.x};
-
-                if (dot(-dr_to_target, t) > 0) {
-                    update_next_target = true;
-                } else {
-                    //                if (t_dist > -RHARD and t_dist < portal.l and norm_dist > -RHARD / 2.0f and
-                    //                norm_dist < RHARD / 2.0f) {
-                    //                    update_next_target = true;
-                    if (dist2(closest_point_on_next_portal, r) < dist2(r, move_target) and portal.l > 0 and
-                        dist2(closest_point_on_next_portal, r) < 16 * RHARD * RHARD and norm2(t) != 0) {
-                        move_target = closest_point_on_next_portal;
-                        portal.l = 0;
-                        dr_to_target = move_target - r_coords[selected];
-                        update_next_target = false;
-                    } else if (vequal(move_target, next_move_target) and move_target != path_end) {
-                        update_next_target = true;
-                    }
-                }
-
-                if (update_next_target) {
-                    move_target = next_move_target;
-                    portal = path_data_[selected].next_portal;
-                    forces_[selected].seek = dr_to_next_target / norm_dr_next * max_speeds_[selected];
-                    //+ dr_to_target / (norm_dr + 1000.f * FLT_EPSILON) / (norm_dr + 1000.f * FLT_EPSILON);
-
-                    if (norm_dr_next == 0) {
-                        forces_[selected].seek = {0, 0};
-                    };
-                    if (next_move_target != path_end) {
-                        path_data_[selected].need_path_update = true;
-                        need_path_update_.push(selected);
-                    } else {
-                        path_data_[selected].need_path_update = false;
-                    }
-                } else if (!is_turning[selected]) {
-                    forces_[selected].seek = dr_to_target / norm_dr * max_speeds_[selected];
-                    //+ dr_to_target / (norm_dr + 1000.f * FLT_EPSILON) / (norm_dr + 1000.f * FLT_EPSILON);
-                    if (norm_dr == 0) {
-                        forces_[selected].seek = {0, 0};
-                    };
-                }
+            if(norm_dr > RHARD ){
+                forces_[selected].seek = dr_to_target / norm_dr * max_speeds_[selected];
             }
 
-            const auto radius = radii_[selected];
-            auto dist_to_target = dist(path_end, r_coords[selected]);
-            if (dist_to_target < 2 * radius) {
-                world_.move_states_[selected] = MoveState::STANDING;
-                standing_pos_[selected] = r_coords[selected];
-                commander_groups_.removeFromGroup(selected);
-
-
-                const auto& neighbour_inds = ns_.getNeighboursInds(r, 2.69 * 2.69 * radius * radius);
-                for (const auto neighbour : neighbour_inds) {
-                    if (dist(r_coords[neighbour], r_coords[selected]) < 3 * radius and
-                        commander_groups_.isSameGroup(selected, neighbour)) {
-                        world_.move_states_[neighbour] = MoveState::STANDING;
-                        standing_pos_[neighbour] = r_coords[neighbour];
-                        commander_groups_.removeFromGroup(selected);
-                    }
-                }
+            if (!is_turning[selected] && needsUpdating(selected, r)){
+                updateTarget(selected, r);
             }
 
-            if (v.x == 0 && v.y == 0)[[unlikely]] { //! this would break 
-                continue;
-            }
-
-            int n_in_front = 0;
-            int n_in_front_standing = 0;
             if (vequal(path_end, move_target)) {
-                const auto& neighbour_inds = ns_.getNeighboursInds(r, radius * radius * 12.f);
-                for (const auto neighbour : neighbour_inds) {
-                    const auto d_r = r_coords[neighbour] - r;
-                    if (norm2(d_r) < 9 * radius * radius and commander_groups_.isSameGroup(selected, neighbour)) {
-                        if (std::abs(angle_calculator_.angleBetween(d_r, v)) < 15) {
-                            n_in_front_standing += world_.move_states_[neighbour] == MoveState::STANDING;
-                            n_in_front++;
-                        }
-                    }
-                }
-            }
-
-            if (n_in_front != 0 and n_in_front_standing == n_in_front) {
-                n_steps_since_all_in_front_standing_[selected]++;
-                if (n_steps_since_all_in_front_standing_[selected] > 5) {
-                    world_.move_states_[selected] = MoveState::STANDING;
-                    standing_pos_[selected] = r_coords[selected];
-                    n_steps_since_all_in_front_standing_[selected] = 0;
-                    commander_groups_.removeFromGroup(selected);
-                }
+                finalizeSeek(selected, r, dr_to_target);
             }
         } else {
             forces_[selected].seek *= 0.f;
@@ -880,39 +894,50 @@ void BoidControler::seek() {
     }
 }
 
-void BoidControler::turn() {
+void BoidControler::turnAll() {
     auto& r_coords = world_.r_coords_;
 
     for (const auto selected : world_.active_inds) {
 
         if (world_.move_states_[selected] != MoveState::HOLDING) {
             auto& v = world_.velocities_[selected];
-            auto dr = path_data_[selected].move_target - r_coords[selected];
-            float norm_dr = norm(dr);
-
-            float desired_angle;
-            if (norm2(v) == 0) {
-                desired_angle = orientation_[selected];
-            } else {
-                desired_angle = angle_calculator_.angle(v);
-            }
-            auto d_angle = desired_angle - orientation_[selected];
-            d_angle > 180 ? d_angle = -360 + d_angle : d_angle = d_angle;
-            d_angle < -180 ? d_angle = 360 + d_angle : d_angle = d_angle;
-            auto angle_change = std::min({turn_rates_[selected], d_angle});
-            if (d_angle < 0) {
-                angle_change = std::max({-turn_rates_[selected], d_angle});
-            }
-            if (std::abs(d_angle) > 0.1f and !is_turning[selected]) {
-                orientation_[selected] += angle_change / 3.f;
-                if (orientation_[selected] > 180) {
-                    orientation_[selected] -= 360;
-                }
-                if (orientation_[selected] < -180) {
-                    orientation_[selected] += 360;
-                }
-            }
+            auto dr_to_target = path_data_[selected].move_target - r_coords[selected];
+            
+            if(is_turning[selected]){ turnTowards(selected, dr_to_target);}
+            else{  turnTowards(selected, v);}
         }
+    }
+}
+
+void BoidControler::turnTowards(int selected, sf::Vector2f direction){
+    float norm_dr = norm(direction);
+    float desired_angle;
+    if (norm2(direction) == 0) {
+        desired_angle = orientation_[selected];
+    } else {
+        desired_angle = angle_calculator_.angle(direction);
+    }
+    auto d_angle = desired_angle - orientation_[selected];
+    d_angle > 180 ? d_angle = -360 + d_angle : d_angle = d_angle;
+    d_angle < -180 ? d_angle = 360 + d_angle : d_angle = d_angle;
+    auto angle_change = std::min({turn_rates_[selected], d_angle});
+    if (d_angle < 0) {
+        angle_change = std::max({-turn_rates_[selected], d_angle});
+    }
+    turnBy(selected, angle_change);
+}
+
+void BoidControler::turnBy(int selected, float angle_change){
+    if (std::abs(angle_change) > 0.3f) {
+        orientation_[selected] += angle_change;
+        if (orientation_[selected] > 180) {
+            orientation_[selected] -= 360;
+        }
+        if (orientation_[selected] < -180) {
+            orientation_[selected] += 360;
+        }
+    } else {
+        is_turning[selected] = false;
     }
 }
 
@@ -921,9 +946,9 @@ void BoidControler::truncateVels() {
     for (const auto ind : world_.active_inds) {
         const auto velocity = world_.velocities_[ind];
         const auto speed = norm(world_.velocities_[ind]);
-        // if (isnan(velocity.x) or isnan(velocity.y)) {
-        //     throw std::runtime_error("velocity not a number!");
-        // }
+        if (std::isnan(velocity.x) or std::isnan(velocity.y)) {
+            throw std::runtime_error("velocity not a number!");
+        }
         if (speed > max_speeds_[ind]) {
             world_.velocities_[ind] = (velocity / speed * max_speeds_[ind]);
         }

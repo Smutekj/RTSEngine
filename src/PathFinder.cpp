@@ -381,18 +381,6 @@ void PathFinder::updatePaths(const std::vector<sf::Vector2f>& r_coords, BoidCont
     sf::Clock time;
     const int n_threads = std::thread::hardware_concurrency();
     threads_.resize(0);
-
-    //! remove duplicates;
-    // for (int i = 0; i < to_update_groups_.size(); i++) {
-    //     const auto& wtf = to_update_groups_[i];
-    //     a.insert({wtf.start, wtf.end});
-    //     if (a.count({wtf.start, wtf.end}) > 0) {
-    //         to_update_groups_[i] = to_update_groups_.back();
-    //         to_update_groups_.pop_back();
-    //         i--;
-    //     }
-    // }
-
     
     std::function<int(const GroupPathData, int)> do_pathfinding = [this, &bc](const GroupPathData data, int thread_id) {
         doPathFinding(data.r_starts, data.r_end, bc, data.radius, data.inds_to_update, thread_id);
@@ -474,28 +462,6 @@ void PathFinder::updatePaths(const std::vector<sf::Vector2f>& r_coords, BoidCont
         time_has_run_out = run_time > available_time;
         
     }
-
-    // for (int i = last; i >= std::max(last + 1 - n_threads, 0); --i) {
-    //     auto data = to_update_groups_.back();
-    //     for (int i = 0; i < data.inds_to_update.size(); ++i) {
-    //         data.r_starts[i] = r_coords[data.inds_to_update[i]];
-    //     }
-    //     to_update_groups_.pop_back();
-    //     // doStuff(data.r_starts, data.r_end, bc, data.radius, data.inds_to_update, thread_id);
-    //     // std::cout << "astar started on thread: " << thread_id << "\n";
-
-    //     threads_.emplace_back(do_pathfinding, data, thread_id);
-    //     for (const auto& ind : data.inds_to_update) {
-    //         update_has_been_issued_[ind] = false;
-    //     }
-    //     thread_id++;
-    // }
-    // // std::cout << "last is: " << last << "\n";
-    // for (auto& thread : threads_) {
-    //     thread.join();
-    //     // thread.
-    //     // std::cout << "pathfinding took: " << time.getElapsedTime().asMilliseconds() << " us\n";
-    // }
     to_update_groups_.resize(to_update_groups_.size() - n_paths_found);
 }
 
@@ -708,37 +674,6 @@ PathFinder::PathAndPortals PathFinder::calcPathOfSelection(BoidControler& bc, co
             }
             threads.clear();
         }
-        // threads.back().detach();
-        // const auto r_start = r_coords[start_tri2indices.at(start_tri_ind).at(0)];
-        // // auto funnel = findOptimalPath(r_start, r_end, max_radius_of_agent);
-        // FunnelData funnel;
-        // findSubOptimalPathCenters(r_start, r_end, max_radius_of_agent, funnel);
-
-        // funnel.funnel.push_back({r_start, r_start});
-        // std::reverse(funnel.funnel.begin(), funnel.funnel.end()); //! Should just use deque ...
-        // funnel.funnel.push_back({r_end, r_end});
-        // const auto path_and_portals =
-        //     pathFromFunnel(r_start, r_end, radii[start_tri2indices.at(start_tri_ind)[0]], funnel);
-
-        // const auto& selected_inds_in_start_triangle = start_tri2indices.at(start_tri_ind);
-        // for (const auto selected_ind : selected_inds_in_start_triangle) {
-
-        //     funnel.funnel[0] = {r_coords[selected_ind], r_coords[selected_ind]};
-        //     const auto& path = path_and_portals.path;
-        //     const auto& portals = path_and_portals.portals;
-        //     if (wtf) {
-        //         result.path = std::vector<sf::Vector2f>(path.begin(), path.end());
-        //         result.portals = std::vector<Edgef>(portals.begin(), portals.end());
-        //         wtf = false;
-        //     } //! this is so that I can draw one path for demonstrations
-
-        //     bc.setPathData(selected_ind, path.at(1), portals.at(1));
-        //     if (path.size() >= 3) {
-        //         bc.setPathDataNext(selected_ind, path.at(2), portals.at(2));
-        //     } else {
-        //         bc.setPathDataNext(selected_ind, path.at(1), Edgef());
-        //     }
-        // }
     }
 
     for (auto& job : threads) {
