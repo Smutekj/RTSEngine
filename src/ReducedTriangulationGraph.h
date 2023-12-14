@@ -12,6 +12,7 @@ struct FunnelData {
     std::vector<std::pair<sf::Vector2f, sf::Vector2f>> funnel;
 };
 
+//! \struct data  held at a vertex in a reduced triangulation graph
 struct ReducedVertex {
     std::array<float, 3> widths = {MAXFLOAT, MAXFLOAT, MAXFLOAT};
     std::array<float, 3> lengths = {0, 0, 0};
@@ -20,8 +21,8 @@ struct ReducedVertex {
 
 //! \class reduced version of full triangulation graph where we store only edges of crossroads triangles as vertices.
 //! \class distances between vertices are calculated using paths from funnel algorithm connecting midpoints of the
-//! crossroads edges through triangle corridors. \class triangles with only one uncostrained edge (dead ends) are also
-//! considered vertices;
+//! \class crossroads edges through triangle corridors. \class triangles with only one uncostrained edge (dead ends) are also
+//! \class  considered vertices;
 struct ReducedTriangulationGraph {
 
     std::vector<int> tri_ind2vertex;

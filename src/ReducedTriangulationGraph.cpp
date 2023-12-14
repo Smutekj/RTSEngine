@@ -30,7 +30,13 @@ float ReducedTriangulationGraph::sign2(const sf::Vector2f& p1, const sf::Vector2
     return (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
 }
 
-float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, const sf::Vector2f r_end, FunnelData& fd,
+//! \brief computes path distance within triangles funnel using \p funnel_data  
+//! \param r_start
+//! \param r_end
+//! \param funnel_data
+//! \param cdt Triangulation object (is this really needed here?)
+//! \returns distance of the shortes path within given funnel
+float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, const sf::Vector2f r_end, FunnelData& funnel_data,
                                                 const Triangulation& cdt) const {
 
     std::deque<sf::Vector2f> smoothed_path = {r_start};
@@ -41,7 +47,7 @@ float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, cons
     sf::Vector2f portal_right = r_start;
     sf::Vector2f portal_left = r_start;
 
-    auto& funnel = fd.funnel;
+    auto& funnel = funnel_data.funnel;
 
     volatile int right_index = 0;
     volatile int left_index = 0;
@@ -91,6 +97,10 @@ float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, cons
     return distance;
 }
 
+//! \brief constructs reduced triangulation graph from full triangulation 
+//! \brief also assings graph-component to each triangle ind and writes it to \p tri_ind2component  
+//! \param cdt full triangulation object
+//! \param tri_ind2component  
 void ReducedTriangulationGraph::constructFromTriangulation(Triangulation& cdt, std::vector<TriInd>& tri_ind2component) {
 
     const auto& triangles = cdt.triangles_;
@@ -272,6 +282,10 @@ void ReducedTriangulationGraph::constructFromTriangulation(Triangulation& cdt, s
     }
 }
 
+//! \brief constructs reduced triangulation graph from full triangulation 
+//! \brief also assings graph-component to each triangle ind and writes it to \p tri_ind2component  
+//! \param cdt full triangulation object
+//! \param tri_ind2component  
 void ReducedTriangulationGraph::constructFromTriangulationCenters(Triangulation& cdt,
                                                                   std::vector<TriInd>& tri_ind2component) {
 
