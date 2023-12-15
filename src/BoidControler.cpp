@@ -88,12 +88,12 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
     scatter(dt);
     const auto scatter_time = clock.restart().asMicroseconds();
     seek();
+    const auto seek_time = clock.restart().asMicroseconds();
 
     repulseBoidsNeighbourList(dt);
     const auto repulsion_time = clock.restart().asMicroseconds();
 
     allign(dt);
-    const auto seek_time = clock.restart().asMicroseconds();
 
     const float lambda = 0.00005f;
     //! apply forces
@@ -341,6 +341,8 @@ void BoidControler::repulseBoidsNeighbourList(float dt) {
             const auto& n_data = ns_.getNeighbourData(ind_i, 0);
             const auto n_last_neighbour = ns_.last_i[ind_i];
 
+            sf::Vector2f repulsion_force(0,0);
+            sf::Vector2f push_force(0,0);
             for (int ind_j = 0; ind_j < n_last_neighbour; ++ind_j) {
                 const auto& dr = n_data[ind_j].dr;
                 const auto boid_ind_j = n_data[ind_j].second;
@@ -352,9 +354,7 @@ void BoidControler::repulseBoidsNeighbourList(float dt) {
                 if(x > 1.0f)  [[unlikely]] 
                 {
                     const auto x_prime = (x - 0.00000000001f);
-                    const auto force =
-                        -dr / norm(dr) * std::min(500.f, 3.f * x_prime * x_prime*x_prime*x_prime); //* ( 1 - a *2.f/3.f);
-                    forces_[ind_i].repulse += force * (1 - alpha);//*agents_are_overlapping;// * static_cast<float>(!is_near_wall[ind_i]);
+                    repulsion_force += -dr / norm(dr) * std::min(500.f, 3.f * x_prime * x_prime*x_prime*x_prime); 
                 }
 
                             
@@ -370,10 +370,13 @@ void BoidControler::repulseBoidsNeighbourList(float dt) {
                 world_.move_states_[ind_i] == MoveState::MOVING and world_.move_states_[boid_ind_j] == MoveState::STANDING;
                 bool moving_pushes_standing_b =
                 world_.move_states_[boid_ind_j] == MoveState::MOVING and world_.move_states_[ind_i] == MoveState::STANDING;
-                if (moving_pushes_standing_b and x > 0.75f) {
-                    forces_[ind_i].push += -(dr) * 1000.f * (x/0.75f) ;
+                if (moving_pushes_standing_b and x > 0.75f) [[unlikely]] 
+                {
+                    push_force += -(dr) * 1000.f * (x/0.75f) ;
                 }
             }
+            forces_[ind_i].repulse += repulsion_force;
+            forces_[ind_i].push += push_force;
 
         }
     }
@@ -746,7 +749,7 @@ bool BoidControler::needsUpdating(int selected, const sf::Vector2f r){
     auto& next_move_target = path_data_[selected].next_move_target;
     const auto& path_end = path_data_[selected].path_end;
 
-    // if(isStuck(selected)){ return true; } //! we have to call step bro for help
+    if(isStuck(selected)){ return true; } //! HELP STEP BRO, I'M STUCK!!!
     if(vequal(move_target, path_end)){ return false; } 
     
     auto dr_to_target = move_target - r;
@@ -820,10 +823,11 @@ bool BoidControler::neighboursInFrontReachedEnd(int selected, float radius, sf::
     int n_in_front = 0;
     int n_in_front_standing = 0;
     const auto r = world_.r_coords_[selected];
-    const auto& neighbour_inds = ns_.getNeighboursInds(r, radius * radius * 12.f);
-    for (const auto neighbour : neighbour_inds) {
-        const auto d_r = world_.r_coords_[neighbour] - r;
-        if (norm2(d_r) < 9 * radius * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+    const auto& data = ns_.getNeighbourData(selected, 2.69 * 2.69 * radius * radius);
+    for (int i = 0; i < ns_.last_i[selected]; i++) {
+        const auto neighbour = data[i].second;
+        const auto d_r = data[i].dr;
+        if (norm2(d_r) < 2.69 * 2.69 * radius * radius && commander_groups_.isSameGroup(selected, neighbour)) {
             if (std::abs(angle_calculator_.angleBetween(d_r, dr_to_target)) < 36) {
                 n_in_front_standing += world_.move_states_[neighbour] == MoveState::STANDING;
                 n_in_front++;
@@ -840,12 +844,13 @@ void BoidControler::finalizeSeek(int selected, sf::Vector2f r, sf::Vector2f dr_t
     auto dist_to_end = dist(path_end, r);
     if (dist_to_end < 2 * radius) {
         //! we inform all neighbours in our command group within some radius that they have reached the end 
-        const auto& neighbour_inds = ns_.getNeighboursInds(r, 2.69 * 2.69 * radius * radius);
-        for (const auto neighbour : neighbour_inds) {
-            const auto r_neighbour = world_.r_coords_[neighbour];
-            const auto dist_to_neighbour = dist(r_neighbour, r);
-            if (dist_to_neighbour < 3 * radius && commander_groups_.isSameGroup(selected, neighbour)) {
-                stopSeeking(neighbour,  r_neighbour);
+        const auto& data = ns_.getNeighbourData(selected, 2.69 * 2.69 * radius * radius);
+        for (int i = 0; i < ns_.last_i[selected]; i++) {
+            const auto neighbour = data[i].second;
+            const auto dr = world_.r_coords_[neighbour];
+            const auto dist_to_neighbour = norm(dr);
+            if (dist_to_neighbour < 2.69 * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+                stopSeeking(neighbour,  world_.r_coords_[neighbour]);
             }
         }
         stopSeeking(selected, r);
