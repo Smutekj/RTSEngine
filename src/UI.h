@@ -4,9 +4,11 @@
 #include <filesystem>
 #include "core.h"
 #include "Settings.h"
-#include "DebugInfo.h"
-#include "BoidControler.h"
-#include "Game.h"
+
+class Game;
+class DebugInfo;
+class FogOfWarV2;
+class BoidControler;
 
 class ClickableBox {
 
@@ -132,15 +134,24 @@ template <class WidgetType> class PopUpWindow : public Widget {
 
         view_.setViewport(sf::FloatRect(0.0f, 0.5f, 0.1f, 0.4f));
 
-        const auto n_settings = settings->getCount();
-        sf::Vector2f window_dimension = {button_size.x, button_size.y * n_settings};
+        const auto n_settings = settings->getCountValues();
+        const auto n_options = settings->getCountOptions();
+
+        sf::Vector2f window_dimension = {button_size.x, button_size.y * (n_settings+n_options)};
         view_.setSize(window_dimension);
         view_.setCenter(window_dimension / 2.f);
 
         sf::Vector2f upper_left_pos = {0, 0};
         for (int i = 0; i < n_settings; ++i) {
             std::unique_ptr<Widget> new_widget(
-                new WidgetType(upper_left_pos, button_size, settings->getNameOf(i), font, i, settings));
+                new WidgetType(upper_left_pos, button_size, settings->getNameOfValue(i), font, i, settings));
+            widgets_.push_back(std::move(new_widget));
+            upper_left_pos.y += button_size.y;
+        }
+
+        for (int i = 0; i < n_options; ++i) { //! options need always buttons
+            std::unique_ptr<Button2> new_widget(
+                new Button2(upper_left_pos, button_size, settings->getNameOfOption(i), font, i, settings));
             widgets_.push_back(std::move(new_widget));
             upper_left_pos.y += button_size.y;
         }
@@ -264,7 +275,7 @@ class UI {
     sf::View ui_view_;
 
   public:
-    UI(Game& game, DebugInfo& dbg, BoidControler& bc);
+    UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc);
 
     void draw(sf::RenderWindow& window);
 

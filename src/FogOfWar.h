@@ -1,6 +1,13 @@
+#ifndef BOIDS_FOGOFWAR_H
+#define BOIDS_FOGOFWAR_H
+
+
 #include "core.h"
 #include "BloomEffect.hpp"
 #include "Geometry.h"
+#include "Settings.h"
+#include <iostream>
+#include <deque>
 
 namespace FOW {
 
@@ -11,7 +18,6 @@ namespace FOW {
 float constexpr sqrtNewtonRaphson(float x, float curr, float prev) {
     return curr == prev ? curr : sqrtNewtonRaphson(x, 0.5f * (curr + x / curr), curr);
 }
-
 
 /*
  * Constexpr version of the square root
@@ -43,9 +49,7 @@ template <int N> struct DeltaY {
 };
 
 static constexpr auto DELTAS = DeltaY<N_MAX_DELTA_STRIPEIND>();
-
-} // namespace FOW
-
+} //! Namespace FOW
 
 class FogOfWar {
 
@@ -55,7 +59,6 @@ class FogOfWar {
     float dy_;
     float dx_;
     int n_stripes;
-
 
     struct StripeData {
         float min_x;
@@ -92,7 +95,7 @@ class FogOfWar {
 
     FogOfWar(sf::Vector2i box_size, sf::Vector2f cell_size);
 
-    void update(const std::vector<sf::Vector2f>& vision_data, const std::vector<int>& active_inds);
+    void update(const std::vector<sf::Vector2f>& vision_data, const std::vector<float>& radii, const std::vector<int>& active_inds);
     void update2(const std::vector<sf::Vector2f>& vision_data, const std::vector<int>& active_inds);
     void update3(const std::vector<sf::Vector2f>& vision_data, const std::vector<int>& active_inds);
     void update4(const std::vector<sf::Vector2f>& vision_data, const std::vector<int>& active_inds);
@@ -106,20 +109,6 @@ class FogOfWar {
         sf::Vector2f position;
         float radius;
     };
-
-    // void initializeGridData(const std::vector<VisionData>& vision_data) {
-
-    //     for (const auto& [r, radius] : vision_data) {
-    //         const int stripe_ind = std::floor(r.y / dy_);
-    //         const int grid_1dind = std::floor(r.x / dx_);
-
-    //         const auto di_max = std::ceil(radius / dy_);
-    //         for (int i = -di_max; i <= di_max; ++i) {
-    //             const auto delta_x = std::sqrt(radius * radius - (dy_ * i) * (dy_ * i));
-    //             addToStripe(stripe_ind + i, r.x - delta_x, r.x + delta_x);
-    //         }
-    //     }
-    // }
 
     bool isVisible(const sf::Vector2f& r) const {
         const auto stripe_ind = std::floor(r.y / dy_);
@@ -136,3 +125,70 @@ class FogOfWar {
 
     void draw(sf::RenderWindow& window);
 };
+
+
+
+class FogOfWarV2 {
+
+  public:
+    FogOfWarSettings settings_;
+
+    struct StripeData {
+        float y;
+        int next;
+    };
+
+    typedef std::deque<std::pair<float, float>> StripeVec;
+    std::array<StripeVec, FOW::N_STRIPES> stripes_;
+    std::array<StripeVec, FOW::N_STRIPES> revealed_stripes_;
+
+    sf::VertexArray fow_vertices_;  //! this holds vertices for drawing
+    sf::VertexArray revealed_fow_vertices_;  //! this holds vertices for drawing
+
+    FogOfWarV2(sf::Vector2i box_size, sf::Vector2f cell_size);
+
+    struct VisionData {
+        sf::Vector2f r;
+        float radius_sq;
+        int player_ind = 0;
+    };
+
+    std::array<std::vector<VisionData>, FOW::N_STRIPES> stripe2particle_data_;
+    std::array<int, FOW::N_STRIPES> stripe2;
+
+
+    void update(const std::vector<sf::Vector2f>& r_coords,
+                const std::vector<float>& radius,
+                const std::vector<int>& active_inds,
+                const std::vector<int>& player_inds);
+    void update2(const std::vector<sf::Vector2f>& r_coords,
+                const std::vector<float>& radius,
+                const std::vector<int>& active_inds,
+                const std::vector<int>& player_inds);
+    void addTo(StripeVec& stripe_vec, float x_left, float x_right);
+    
+    void reveal() ;
+
+    bool isVisible(const sf::Vector2f& r) const {
+        const int stripe_ind = std::floor(r.y / dy_);
+        const auto& stripe = stripes_.at(stripe_ind);
+
+        int n_in_vision = 0;
+        for (const auto& [left, right] : stripe) {
+            n_in_vision += (left < r.x and r.x <= right);
+        }
+        return n_in_vision == 1;
+    }
+    
+    void draw(sf::RenderWindow& window);
+private:
+    void addToRevealed(int stripe_ind, float x_left, float x_right);
+    void addToStripe(int stripe_ind, float x_left, float x_right);
+    void drawStripe(FogOfWarV2::StripeVec& stripe, int stripe_ind, sf::VertexArray& vertices, sf::Color color); 
+
+    sf::Color grey_color = {0, 0, 1, 69};
+    float dy_;
+    float dx_;
+};
+
+#endif //BOIDS_FOGOFWAR_H

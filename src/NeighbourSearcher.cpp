@@ -104,85 +104,10 @@ std::vector<int>& NeighbourSearcher::getNeighbourInds(const int boid_ind, const 
     return particle2verlet_list.at(boid_ind);
 }
 
-const std::array<NeighbourSearcher::NeighbourData, 500>& NeighbourSearcher::getNeighbourData(const int boid_ind,
+const std::array<NeighbourSearcher::NeighbourData, N_MAX_NEIGHBOURS>& NeighbourSearcher::getNeighbourData(const int boid_ind,
                                                                                              const float r_max2) const {
     return particle2neighbour_data_.at(boid_ind);
 }
-
-// void NeighbourSearcher::fillVerletLists(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii,
-//                                         const float r_max2) {
-
-//     // for (const auto boid_ind : boids_->active_inds) {
-//     //     auto& verlet_list = particle2verlet_list.at(boid_ind);
-//     //     verlet_list.clear();
-//     //     std::vector<float> distances2;
-
-//     //     const auto r = r_coords[boid_ind];
-//     //     const int cell_index_center = s_grid_->coordToCell(r);
-//     //     const auto& neighbouring_cell_inds = s_grid_->calcNearestCells(cell_index_center);
-//     //     for (auto cell_ind_neighbour : neighbouring_cell_inds) {
-//     //         const auto& cell = cell2boid_inds_[cell_ind_neighbour];
-//     //         const auto last_in_cell = cell.back();
-//     //         for (int i = 0; i < last_in_cell; ++i) {
-//     //             const auto& neighbour_ind = cell[i];
-//     //             const auto d2 = dist2(r_coords[neighbour_ind], r);
-//     //             if (d2 <= r_max2 and boid_ind != neighbour_ind) {
-//     //                 verlet_list.push_back(neighbour_ind);
-//     //                 distances2.push_back(d2);
-//     //             }
-//     //         }
-//     //     }
-//     // }
-//     pair_list_.clear();
-//     std::array<int, 9> nearest_cells;
-//     for (const auto cell_i_ind : active_cells_) {
-//         const auto& cell_i = cell2boid_inds_[cell_i_ind];
-//         int n_nearest_cells;
-//         s_grid_->calcNearestCells(cell_i_ind, nearest_cells, n_nearest_cells);
-//         for (int cell_j_ind = 0; cell_j_ind < n_nearest_cells; ++cell_j_ind) {
-//             const auto& cell_j = cell2boid_inds_[nearest_cells[cell_j_ind]];
-
-//             const auto last_in_cell_i = cell_i.back();
-//             const auto last_in_cell_j = cell_j.back();
-//             for (int i = 0; i < last_in_cell_i; ++i) {
-//                 for (int j = 0; j < last_in_cell_j; ++j) {
-//                     const auto r_collision = radii[cell_j[j]] + radii[cell_i[i]];
-//                     const auto dr = r_coords[cell_j[j]] - r_coords[cell_i[i]];
-//                     pair_list_.emplace_back(dr, cell_i[i], cell_j[j], r_collision);
-//                 }
-//             }
-//         }
-//     }
-//     for (const auto cell_i_ind : active_cells_) {
-//         cell2boid_inds_[cell_i_ind].back() = 0;
-//     }
-
-//     const auto n_pairs = pair_list_.size();
-//     int last = n_pairs - 1;
-//     for (int i = 0; i < n_pairs and i < last; i++) {
-//         const auto& pair_data = pair_list_[i];
-//         if (norm2(pair_data.dr) > r_max2 or pair_data.first == pair_data.second) {
-//             pair_list_[i] = pair_list_[last];
-//             i--;
-//             last--;
-//         }
-//     }
-//     for (int i = 0; i < last; ++i) {
-//         particle2verlet_list[pair_list_[i].first].push_back(pair_list_[i].second);
-//     }
-// }
-
-// void fillPairList(sf::Vector2f* r_coords, float* radii, la) {
-//     for (int i = 0; i < last_in_cell_i; ++i) {
-//         for (int j = 0; j < last_in_cell_j; ++j) {
-//             const auto r_collision = radii[cell_j[j]] + radii[cell_i[i]];
-//             const auto dr = r_coords[cell_j[j]] - r_coords[cell_i[i]];
-//             if (norm2(dr) < r_max2) {
-//                 pair_list_.emplace_back(dr, cell_i[i], cell_j[j], r_collision);
-//             }
-//         }
-//     }
-// }
 
 void NeighbourSearcher::fillNeighbourData2(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii,
                                            const float r_max2) {
@@ -198,6 +123,7 @@ void NeighbourSearcher::fillNeighbourData2(const std::vector<sf::Vector2f>& r_co
         const auto r = r_coords[i];
         const auto cell_i_ind = s_grid_->coordToCell(r);
         int n_nearest_cells;
+
         s_grid_->calcNearestCells(cell_i_ind, nearest_cells, n_nearest_cells);
         nearest_cells[n_nearest_cells] = cell_i_ind;
         n_nearest_cells++;
@@ -213,9 +139,12 @@ void NeighbourSearcher::fillNeighbourData2(const std::vector<sf::Vector2f>& r_co
                 const auto dr = cell_data_j[j].r - r;
                 if (norm2(dr) < r_max2 && i != ind) {
                     particle2neighbour_data_[i][last_i[i]] = {dr, r_collision, ind};
-                    last_i[i] = std::min(300 - 1, last_i[i] + 1);
+                    last_i[i] = std::min(N_MAX_NEIGHBOURS, last_i[i] + 1);
                 }
             }
+        }
+        if(last_i[i] == N_MAX_NEIGHBOURS){
+            throw std::runtime_error("too many neighbours on particle: " + std::to_string(i) + " !");
         }
     }
 }
@@ -253,7 +182,7 @@ void NeighbourSearcher::addOnGrid(const std::vector<sf::Vector2f>& r_coords, con
             cell2boid_inds2_[cell_ind][last_ind_in_cell] = {r_coords[boid_ind], radii[boid_ind], boid_ind};
             last_ind_in_cell++;
         } else {
-            // std::cout << "too many particles per cell!";
+            throw std::runtime_error("too many particles per cell!");
         }
 
         if (!cell_visited_[cell_ind]) {
@@ -271,6 +200,11 @@ void NeighbourSearcher::addOnGrid(const std::vector<sf::Vector2f>& r_coords, con
     }
 }
 
+//! \brief sorts relevant data of particles in \p selection
+//! \brief into corresponding cells (coordinate, radius, boid index (later maybe move state?))
+//! \param r_coords
+//! \param radii 
+//! \param selection    selected particle inds
 void NeighbourSearcher::addOnGrid(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii,
                                   const std::vector<int>& selection) {
 
@@ -712,107 +646,3 @@ void NeighbourSearcher::fillNeighbourDataBalanced(const std::vector<sf::Vector2f
 }
 
 }
-
-// void NeighbourSearcher::fillNeighbourDataSerial(const std::vector<sf::Vector2f>& r_coords,
-//                                                 const std::vector<float>& radii, const float r_max2) {
-
-//     pair_list_.clear();
-//     std::sort(active_cells_.begin(), active_cells_.end());
-//     omp_set_num_threads(omp_get_max_threads());
-
-//     const auto n_active_cells = active_cells_.size();
-
-//     std::array<int, 9> nearest_cells;
-
-//     for (int active_cell_ind = 0; active_cell_ind < n_active_cells; ++active_cell_ind) {
-//         const auto cell_i_ind = active_cells_[active_cell_ind];
-//         const auto& cell_i = cell2boid_inds2_[cell_i_ind];
-//         int n_nearest_cells;
-//         s_grid_->calcNearestCells(cell_i_ind, nearest_cells, n_nearest_cells);
-//         for (auto nearest_cell_it = nearest_cells.begin(); nearest_cell_it < nearest_cells.begin() + n_nearest_cells;
-//              ++nearest_cell_it) {
-//             const auto cell_j_ind = *nearest_cell_it;
-//             if (cell_j_ind <= cell_i_ind) {
-//                 continue;
-//             }
-
-//             const auto& cell_j = cell2boid_inds2_[cell_j_ind];
-
-//             const auto last_in_cell_i = cell_i.back().ind;
-//             const auto last_in_cell_j = cell_j.back().ind;
-//             for (int i = 0; i < last_in_cell_i; ++i) {
-//                 for (int j = 0; j < last_in_cell_j; ++j) {
-//                     const auto r_collision = cell_j[j].radius + cell_i[i].radius;
-//                     const auto dr = cell_j[j].r - cell_i[i].r;
-//                     if (norm2(dr) < r_max2) {
-//                         pair_lists_[omp_get_thread_num()].emplace_back(dr, cell_i[i].ind, cell_j[j].ind,
-//                         r_collision);
-//                         // pair_list_.emplace_back(dr, cell_i[i].ind, cell_j[j].ind, r_collision);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-// #pragma omp parallel for
-//     for (int active_cell_ind = 0; active_cell_ind < n_active_cells; ++active_cell_ind) {
-//         const auto cell_i_ind = active_cells_[active_cell_ind];
-//         const auto& cell_i = cell2boid_inds2_[cell_i_ind];
-//         const auto last_in_cell_i = cell_i.back().ind;
-//         if (last_in_cell_i > 50) {
-//             std::cout << "wtf";
-//         }
-//         for (int i = 0; i < last_in_cell_i; ++i) {
-//             for (int j = i + 1; j < last_in_cell_i; ++j) {
-//                 const auto dr = cell_i[j].r - cell_i[i].r;
-//                 const auto r_collision = cell_i[j].radius + cell_i[i].radius;
-//                 pair_lists_[omp_get_thread_num()].emplace_back(dr, cell_i[i].ind, cell_i[j].ind, r_collision);
-//                 // particle2neighbour_data_[cell_i[i].ind][last_i[cell_i[i].ind]] = {dr, r_collision, cell_i[j].ind};
-//                 // last_i[cell_i[i].ind] = std::min(100 - 1, last_i[cell_i[i].ind] + 1);
-//             }
-//         }
-//     }
-
-//     // std::cout << "n active cells: " << n_active_cells << "\n";
-
-//     // for (int i = 0; i < n_pairs and i < last; i++) {
-//     //     const auto& pair_data = pair_list_[i];
-//     //     if (norm2(pair_data.dr) > r_max2 or pair_data.first == pair_data.second) {
-//     //         pair_list_[i] = pair_list_[last];
-//     //         i--;
-//     //         last--;
-//     //     }
-//     // }
-
-//     if (pair_lists_[0].size() > 100000) {
-//         std::cout << "wtf2"
-//                   << "\n";
-//     }
-
-//     // #pragma omp parallel
-//     //     {
-
-//     //         const auto& pair_list = pair_lists_[omp_get_thread_num()];
-//     //         // #pragma omp critical
-//     //         //         std::cout << "n pairs on thread " << omp_get_thread_num() << " is: " << pair_list.size() <<
-//     "
-//     //         \n";
-
-//     //         const auto n_pairs = pair_list.size();
-//     //         const int last = n_pairs - 1;
-//     // #pragma omp for
-//     //         for (int i = 0; i < last; ++i) {
-//     //             const auto& ind_i = pair_list[i].first;
-//     //             const auto& ind_j = pair_list[i].second;
-//     //             const auto& dr = pair_list[i].dr;
-//     //             const auto& r_collision = pair_list[i].r_collision;
-//     // #pragma omp critical
-//     //             {
-//     //                 particle2neighbour_data_[ind_i][last_i[ind_i]] = {dr, r_collision, ind_j};
-//     //                 particle2neighbour_data_[ind_j][last_i[ind_j]] = {-dr, r_collision, ind_i};
-//     //                 last_i[ind_i] = std::min(100 - 1, last_i[ind_i] + 1);
-//     //                 last_i[ind_j] = std::min(100 - 1, last_i[ind_j] + 1);
-//     //             }
-//     //         }
-//     //     }
-// }
