@@ -59,10 +59,10 @@ struct UnitType {
 // };
 
 struct UnitCreatorSettings : public Settings {
-    enum Values { RADIUS = 0, MAX_SPEED, TURNRATE, ACCELERATION, COUNT };
+    enum Values { RADIUS = 0, MAX_SPEED, TURNRATE, ACCELERATION, COUNT_VALS };
 
-    std::array<float, COUNT> values_;
-    std::array<std::string, COUNT> value_names_;
+    std::array<float, COUNT_VALS> values_;
+    std::array<std::string, COUNT_VALS> value_names_;
 
     UnitCreatorSettings() {
         value_names_[RADIUS] = "radius";
@@ -79,8 +79,10 @@ struct UnitCreatorSettings : public Settings {
 
     virtual void setValue(int value_ind, float new_value) override { values_[value_ind] = new_value; };
     virtual float getValue(int value_ind) override { return values_[value_ind]; };
-    virtual const std::string& getNameOf(int value_ind) const override { return value_names_[value_ind]; };
-    virtual const int getCount() const override { return COUNT; }
+    virtual const std::string& getNameOfOption(int o) const override { return value_names_.at(0);}
+    virtual const std::string& getNameOfValue(int o) const override { return value_names_.at(o);} 
+    virtual const int getCountValues() const override { return COUNT_VALS; }
+    virtual const int getCountOptions() const override { return 0; }
 };
 
 struct TimeData {
@@ -200,7 +202,8 @@ class Game {
     bool game_is_stopped_ = false;
     bool last_pressed_was_space = false;
 
-    std::unique_ptr<FogOfWar> p_fow_;
+    std::unique_ptr<FogOfWarV2> p_fow_;
+    std::vector<float> vision_radii_;
 
     Buildings buildings;
     std::vector<sf::Vector2f> path;

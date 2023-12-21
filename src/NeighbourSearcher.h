@@ -5,7 +5,6 @@
 
 
 class SearchGrid;
-
 class NeighbourSearcher {
 
     struct ParticlePairData {
@@ -66,8 +65,8 @@ class NeighbourSearcher {
     std::array<ParticlePairData2, 12> pair_lists2_;
 
 
-    std::vector<std::array<NeighbourData, 500>> particle2neighbour_data_;
-    std::vector<std::array<NeighbourData, 500>> particle2neighbour_data2_;
+    std::vector<std::array<NeighbourData, N_MAX_NEIGHBOURS>> particle2neighbour_data_;
+    std::vector<std::array<NeighbourData, N_MAX_NEIGHBOURS>> particle2neighbour_data2_;
 
     std::vector<std::vector<int>> particle2verlet_list;
 
@@ -103,7 +102,7 @@ class NeighbourSearcher {
 
     std::vector<int>& getNeighbourInds(int boid_ind, const float r_max2);
     
-    const std::array<NeighbourData, N_MAX_AGENTS_IN_CELL>& getNeighbourData(const int boid_ind,
+    const std::array<NeighbourData, N_MAX_NEIGHBOURS>& getNeighbourData(const int boid_ind,
                                                                             const float r_max2) const;
     void addOnGrid(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii);
     void addOnGrid(const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii,
@@ -140,4 +139,31 @@ private:
     std::vector<int> thread2n_cell_pairs_;
 
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

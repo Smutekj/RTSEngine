@@ -74,9 +74,9 @@ Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2
     mouse_selection.setOutlineThickness(5);
 
     const sf::Vector2f cell_size = {box_size.x / asFloat(n_cells).x, box_size.y / asFloat(n_cells).y};
-    p_fow_ = std::make_unique<FogOfWar>(static_cast<sf::Vector2i>(box_size), cell_size);
+    p_fow_ = std::make_unique<FogOfWarV2>(static_cast<sf::Vector2i>(box_size), cell_size);
 
-    searcher = std::make_unique<NeighbourSearcher>(box_size, RHARD * 10, world_);
+    searcher = std::make_unique<NeighbourSearcher>(box_size, RHARD * 20, world_);
 
     p_map_grid = std::make_unique<MapGrid>(n_cells, box_size, cell_size);
     p_map_grid->getEdges()->vertices_ = cdt.vertices_;
@@ -84,7 +84,9 @@ Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2
 
     boid_ind2unit_type_.resize(N_MAX_NAVIGABLE_BOIDS, 0);
     unit_types_.resize(1);
-    createUnitType(0.3, 3 * RHARD);
+    createUnitType(0.3, 1 * RHARD);
+    
+    vision_radii_.resize(N_MAX_NAVIGABLE_BOIDS, FOW::R_MAX_VISION);
 }
 int frame = 0;
 bool first_frame = true;
@@ -94,20 +96,6 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
     sf::Event event;
     bool clicked = false;
 
-    if (false and ++frame > 10) {
-        frame = 0;
-        event.type = sf::Event::EventType::MouseButtonPressed;
-        event.mouseButton.button = sf::Mouse::Right;
-        sf::Vector2f rand_pos = {(rand() / static_cast<float>(RAND_MAX)) * box_size.x,
-                                 (rand() / static_cast<float>(RAND_MAX)) * box_size.y};
-        // sf::Mouse::setPosition(window.mapCoordsToPixel(rand_pos), window);
-        click_position = rand_pos;
-        selectInRectangle(world_, {0, 0}, box_size, selection, selected_player);
-        clicked = true;
-    }
-    if (first_frame) {
-        first_frame = false;
-    }
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed) {
             window.close();
@@ -116,7 +104,7 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
                 if (game_is_stopped_) {
                     last_pressed_was_space = true;
-                } else {
+                } else {   
                     game_is_stopped_ = true;
                 }
             } else {
@@ -457,7 +445,8 @@ void Game::update(const float dt, sf::RenderWindow& window) {
 
     world_.update(dt * 100.f);
     auto& fow_clock = clocks.clock;
-    p_fow_->update(world_.r_coords_, world_.active_inds);
+    // p_fow_->update(world_.r_coords_, world_.active_inds);
+    p_fow_->update(world_.r_coords_, vision_radii_, world_.active_inds, world_.ind2player);
     clocks.fog_of_war.addTime(fow_clock.getElapsedTime().asMicroseconds());
     // std::cout << "fog of war finished \n" << std::flush;
     const auto fow_time = fow_clock.restart().asMicroseconds();

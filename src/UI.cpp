@@ -1,5 +1,8 @@
 #include "UI.h"
-
+#include "FogOfWar.h"
+#include "BoidControler.h"
+#include "DebugInfo.h"
+#include "Game.h"
 
     ClickableBox::ClickableBox(sf::Vector2f position, sf::Vector2f size, std::string text)
         : bounding_box_(size) {
@@ -38,7 +41,7 @@
         info_text_.setFillColor(sf::Color::Black);
         info_text_.setPosition(bounding_box_.getPosition().x, bounding_box_.getPosition().y);
         info_text_.setScale(0.25, 0.25);
-        info_text_.setString(p_controled_settings_->getNameOf(ind_in_settings));
+        info_text_.setString(text);
         info_text_.setFont(font);
     }
 
@@ -251,7 +254,7 @@ void Button2::onKeyPress(const sf::Keyboard::Key& pressed_key){};
     }
 
 
-UI::UI(Game& game, DebugInfo& dbg, BoidControler& bc) {
+UI::UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc) {
     const std::string font_path{std::filesystem::current_path()};
     if (!font.loadFromFile(font_path + "/../Resources/arial.ttf")) {
         throw std::runtime_error("no font file at " + font_path);
@@ -271,17 +274,21 @@ UI::UI(Game& game, DebugInfo& dbg, BoidControler& bc) {
     const sf::Vector2f upper_left_pos1 = {0, 0};
     const sf::Vector2f upper_left_pos2 = {0, 1.0f * button_size_.y};
     const sf::Vector2f upper_left_pos3 = {0, 2.0f * button_size_.y};
+    const sf::Vector2f upper_left_pos4 = {0, 3.0f * button_size_.y};
 
     std::unique_ptr<Widget> popup_window(
         new PopUpWindow<Button2>(upper_left_pos1, button_size_, "Triangulation", font, &dbg_settings));
     std::unique_ptr<Widget> popup_window2(
         new PopUpWindow<Slider2>(upper_left_pos2, button_size_, "Behaviour", font, &bc_settings));
     std::unique_ptr<Widget> popup_window3(
-        new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "UnitCreator", font, &game.uc_settings_));
-
+        new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "Unit Creator", font, &game.uc_settings_));
+    std::unique_ptr<Widget> popup_window4(
+        new PopUpWindow<NumberField>(upper_left_pos4, button_size_, "Fog Of War", font, &fow.settings_));
+    
     widgets_.push_back(std::move(popup_window));
     widgets_.push_back(std::move(popup_window2));
     widgets_.push_back(std::move(popup_window3));
+    widgets_.push_back(std::move(popup_window4));
 
     const auto ui_view_upper_left = ui_view_.getCenter() - ui_view_.getSize() / 2.0f;
 

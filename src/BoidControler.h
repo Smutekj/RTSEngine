@@ -138,12 +138,11 @@ struct BoidControlerSettings2 : Settings {
 
     bool hasAttribute(Options o) const { return options_[o]; }
 
-    virtual const std::string& getNameOf(int o) const override {
-        assert(o < COUNT);
-        return value_names_.at(o);
-    }
+    virtual const std::string& getNameOfOption(int o) const override { return option_names_.at(o);}
+    virtual const std::string& getNameOfValue(int o) const override { return value_names_.at(o);}
 
-    virtual const int getCount() const override { return COUNT; }
+    virtual const int getCountValues() const override { return COUNT; }
+    virtual const int getCountOptions() const override { return 0; }
 };
 
 
@@ -174,6 +173,16 @@ struct ControlForces {
         scatter *= 0.f;
         repulse *= 0.f;
     }
+};
+
+struct InteractionData
+{
+    sf::Vector2f dr;
+    sf::Vector2f v_rel;
+
+    u_int16_t r_collision; 
+    u_int8_t unit_type;
+    u_int8_t player_ind;
 };
 
 

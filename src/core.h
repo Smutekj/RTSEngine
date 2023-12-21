@@ -24,6 +24,8 @@ typedef uint16_t u_int_16_t;
 #pragma once
 
 constexpr int N_MAX_NAVIGABLE_BOIDS = 4000;
+constexpr int N_MAX_NEIGHBOURS = 1000;
+
 const std::array<sf::Vector2f, 8> t_vectors = {sf::Vector2f{1.f, 0.f}, sf::Vector2f{1.f / M_SQRT2, 1.f / M_SQRT2},
                                                sf::Vector2f{0, 1},     sf::Vector2f{-1 / M_SQRT2, 1 / M_SQRT2},
                                                sf::Vector2f{-1, 0},    sf::Vector2f{-1 / M_SQRT2, -1 / M_SQRT2},
@@ -67,7 +69,8 @@ enum Direction : int {
 
 inline Orientation direction2Orientation(Direction dir) { return Orientation(dir % 4); }
 
-constexpr float RAVOID = 2;
+constexpr float RAVOID = 10;
+constexpr float RSCATTER = 2;
 constexpr float RHARD = 3;
 constexpr float RFLOCK = 50;
 constexpr float RALLIGN = 50;

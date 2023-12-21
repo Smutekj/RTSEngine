@@ -34,8 +34,11 @@ struct DebugInfoSettings2 : Settings {
 
     bool hasAttribute(Options o) const { return options_[o]; }
 
-    virtual const std::string& getNameOf(int o) const override { return option_names_.at(o); };
-    virtual const int getCount() const override { return COUNT; }
+
+    virtual const std::string& getNameOfOption(int o) const override { return option_names_[o];}
+    virtual const std::string& getNameOfValue(int o) const override { return option_names_.at(0);}
+        virtual const int getCountValues() const override { return 0; }
+    virtual const int getCountOptions() const override { return COUNT; }
 };
 
 
