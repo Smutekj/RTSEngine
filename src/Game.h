@@ -206,8 +206,8 @@ class Game {
     std::vector<float> vision_radii_;
 
     Buildings buildings;
-    std::vector<sf::Vector2f> path;
-    std::vector<Edgef> portals;
+    std::deque<sf::Vector2f> path;
+    std::deque<Edgef> portals;
 
     Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2f box_size);
 
@@ -223,7 +223,10 @@ class Game {
 
     void createUnitType(const float max_speed, const float radius);
 
+
   private:
+
+    void updateTriangulation();
 
 };
 

@@ -13,6 +13,15 @@
 #include "Triangulation.h"
 
 
+
+void Game::updateTriangulation(){
+    p_map_grid->extractEdgesFromTilesV2(cdt);
+    p_map_grid->addAllBuildingsToTriangulation(cdt);
+    pf.update();
+    p_map_grid->sawOffCorners();
+    p_map_grid->extractVerticesForDrawing(cdt, pf.tri_ind2component_);
+}
+
 void readMazeFile(std::string maze_file_name, const int n, const int m){
     std::ifstream file(maze_file_name);
     std::string text;
@@ -42,17 +51,11 @@ void Game::addUnit(int player_ind, sf::Vector2f r, int unit_type_ind) {
 
     const auto& u_type = unit_types_.at(unit_type_ind);
     const auto radius = uc_settings_.values_[Values::RADIUS];
-    const auto max_speed = uc_settings_.values_[Values::MAX_SPEED];
+    const auto max_speed = 1.69f*uc_settings_.values_[Values::MAX_SPEED];
     const auto turn_rate = uc_settings_.values_[Values::TURNRATE];
     bc_->activate(new_boid_ind, max_speed, radius, turn_rate);
 
-    auto& unit_circle = world_.boid_inds2draw_data_[new_boid_ind].circle;
-    unit_circle.setRadius(radius);
-    if (player_ind == 0) {
-        unit_circle.setFillColor(sf::Color::Green);
-    } else {
-        unit_circle.setFillColor(sf::Color::Red);
-    }
+    world_.radii[new_boid_ind] = radius;
 }
 
 void Game::createUnitType(const float max_speed, const float radius) {
@@ -90,6 +93,8 @@ Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2
 }
 int frame = 0;
 bool first_frame = true;
+
+
 
 void Game::parseInput(sf::RenderWindow& window, UI& ui) {
 
@@ -205,34 +210,36 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
     }
 
     auto view = window.getView();
-    const auto view_size = view.getSize();
-    const auto lx = view.getCenter() - view.getSize() / 2.f;
+    auto vp1 = window.getViewport(view);
+    auto vp2 =view.getViewport();
+    const auto view_size = view.getSize();// * (view.getViewport().width);
     const auto left_border = window.getViewport(view).left;
     const auto right_border = left_border + window.getViewport(view).width;
     const auto top_border = window.getViewport(view).top;
     const auto bottom_border = top_border + window.getViewport(view).height;
-    const auto left_top_coord = window.mapPixelToCoords({left_border, top_border});
-    const auto right_bottom_coord = window.mapPixelToCoords({right_border, bottom_border});
 
     const auto& mouse_pos = sf::Mouse::getPosition();
     const auto& mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition());
-    if (view_is_moving) {
-        const auto dr = mouse_coords - start_view_move_position;
-        view.move(-dr * 0.01f);
-    }
-    if (mouse_pos.x + left_border * 0.2 > window.getViewport(view).width - 10 and
-        left_top_coord.x < box_size.x - view_size.x / 2.f) {
+
+    bool mouse_in_left_border       = mouse_pos.x < 0+ 5;
+    bool mouse_in_top_border        = mouse_pos.y < top_border + 5;
+    bool mouse_in_right_border      = mouse_pos.x > right_border-5;
+    bool mouse_in_bottom_border       = mouse_pos.y > bottom_border-5;
+
+    bool right_arrow_pushed    = sf::Keyboard::isKeyPressed(sf::Keyboard::Right);
+    bool left_arrow_pushed     = sf::Keyboard::isKeyPressed(sf::Keyboard::Left);
+    bool up_arrow_pushed        = sf::Keyboard::isKeyPressed(sf::Keyboard::Up);
+    bool down_arrow_pushed     = sf::Keyboard::isKeyPressed(sf::Keyboard::Down); 
+    if (mouse_in_right_border || right_arrow_pushed) {
         view.move(view_size.x / 100.f, 0);
     }
-
-    if (mouse_pos.x > left_border - 50 and mouse_pos.x <= left_border and
-        right_bottom_coord.x > window.getView().getSize().x) {
+    if (mouse_in_left_border || left_arrow_pushed) {
         view.move(-view_size.x / 100.f, 0);
     }
-    if (mouse_pos.y >= bottom_border - 5 and left_top_coord.y < box_size.y - view_size.y / 2.) {
+    if (mouse_in_bottom_border || down_arrow_pushed) {
         view.move(0, view_size.y / 100.f);
     }
-    if (mouse_pos.y <= top_border + 5 and right_bottom_coord.y > view_size.y / 2.) {
+    if (mouse_in_top_border || up_arrow_pushed) {
         view.move(0, -view_size.y / 100.f);
     }
     window.setView(view);
@@ -262,7 +269,8 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
     }
     if (drawing) {
         auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, mouse_position, {5, 5});
+        const sf::Vector2i building_size = {100, 100};
+        auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, mouse_position, building_size);
 
         if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and wall_clock.getElapsedTime().asSeconds() > 0.4) {
@@ -270,8 +278,12 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
                 p_map_grid->generateRandomWalls(mouse_position, {3000, 400}, 200);
                 p_map_grid->updateBoundaryTypesLocally(lower_left_cell_coord, {3000, 400});
             } else {
-                p_map_grid->buildWall(mouse_position, {5, 5});
-                p_map_grid->updateBoundaryTypesLocally(lower_left_cell_coord, {10, 10});
+                p_map_grid->buildWall(mouse_position, building_size);
+                p_map_grid->updateBoundaryTypesLocally(lower_left_cell_coord, building_size);
+                if(p_map_grid->walls_drawable_.size() > 10000){
+                    updateTriangulation();
+                    p_map_grid->walls_drawable_.clear();
+                }
             }
         }
         if (event.type == sf::Event::MouseButtonReleased) {
@@ -332,11 +344,7 @@ void Game::parseInput(sf::RenderWindow& window, UI& ui) {
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and sf::Keyboard::isKeyPressed(sf::Keyboard::T) and
         building_clock.restart().asSeconds() > 0.3f) {
-        p_map_grid->extractEdgesFromTilesV2(cdt);
-        p_map_grid->addAllBuildingsToTriangulation(cdt);
-        pf.update();
-        p_map_grid->sawOffCorners();
-        p_map_grid->extractVerticesForDrawing(cdt, pf.tri_ind2component_);
+        updateTriangulation();
     }
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D) and building_clock.restart().asSeconds() > 0.5) {
@@ -445,7 +453,6 @@ void Game::update(const float dt, sf::RenderWindow& window) {
 
     world_.update(dt * 100.f);
     auto& fow_clock = clocks.clock;
-    // p_fow_->update(world_.r_coords_, world_.active_inds);
     p_fow_->update(world_.r_coords_, vision_radii_, world_.active_inds, world_.ind2player);
     clocks.fog_of_war.addTime(fow_clock.getElapsedTime().asMicroseconds());
     // std::cout << "fog of war finished \n" << std::flush;
@@ -471,7 +478,7 @@ void Game::update(const float dt, sf::RenderWindow& window) {
     }
 }
 
-void drawPath(sf::RenderWindow& window, const std::vector<sf::Vector2f>& path, const std::vector<Edgef>& portals) {
+void drawPath(sf::RenderWindow& window, const std::deque<sf::Vector2f>& path, const std::deque<Edgef>& portals) {
     sf::RectangleShape line;
     line.setFillColor(sf::Color::Cyan);
     sf::CircleShape node;
@@ -533,6 +540,6 @@ void Game::draw(sf::RenderWindow& window) {
     }
 
     buildings.draw(window);
-    p_fow_->draw(window);
+    p_fow_->draw(this->selected_player, window);
     drawPath(window, path, portals);
 }
