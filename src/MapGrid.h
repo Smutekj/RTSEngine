@@ -29,70 +29,18 @@ struct Building {
     }
     ~Building() = default;
 
-    Building& operator=(const Building& b) {
-        this->edges = b.edges;
-        n = b.n;
-        m = b.m;
-        contour = b.contour;
-        return *this;
-    }
+    Building& operator=(const Building& b) ;
+    sf::Vector2i calcCenter() const;
+    void intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f cell_size);
+};
 
-    sf::Vector2i calcCenter() const {
-        sf::Vector2i center;
-        for (int i = 0; i < 8; ++i) {
-            center += edges[i].from;
-        }
-        return center / 8;
-    }
 
-    void intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f cell_size) {
-        const auto up_left_cell_x = center_cell_coords.x - n / 2;
-        const auto up_left_cell_y = center_cell_coords.y - m / 2;
 
-        const auto wtf_x = (n - horizontal_line_length) / 2;
-        const auto wtf_y = (m - vertical_line_length) / 2;
-        const float sqrt2 = M_SQRT2;
-        const float diagonal_lenght = std::sqrt(wtf_x * wtf_x + wtf_y * wtf_y) * cell_size.x;
+struct TileData{
 
-        edges[0].from = {(up_left_cell_x + wtf_x), up_left_cell_y};
-        edges[0].t = {1, 0};
-        edges[0].l = (n - 2 * wtf_x) * cell_size.x;
-
-        edges[1].from = {(up_left_cell_x + n - wtf_x), up_left_cell_y};
-        edges[1].t = {1 / sqrt2, 1 / sqrt2};
-        edges[1].l = diagonal_lenght;
-
-        edges[2].from = {(up_left_cell_x + n), up_left_cell_y + wtf_y};
-        edges[2].t = {0, 1};
-        edges[2].l = (m - 2 * wtf_y) * cell_size.y;
-
-        edges[3].from = {up_left_cell_x + n, up_left_cell_y + wtf_y + vertical_line_length};
-        edges[3].t = {-1 / sqrt2, 1 / sqrt2};
-        edges[3].l = diagonal_lenght;
-
-        edges[4].from = {up_left_cell_x + wtf_x + horizontal_line_length, up_left_cell_y + m};
-        edges[4].t = {-1, 0};
-        edges[4].l = (n - 2 * wtf_x) * cell_size.x;
-
-        edges[5].from = {up_left_cell_x + wtf_x, up_left_cell_y + m};
-        edges[5].t = {-1 / sqrt2, -1 / sqrt2};
-        edges[5].l = diagonal_lenght;
-
-        edges[6].from = {up_left_cell_x, up_left_cell_y + wtf_y + vertical_line_length};
-        edges[6].t = {0, -1};
-        edges[6].l = (m - 2 * wtf_y) * cell_size.x;
-
-        edges[7].from = {up_left_cell_x, up_left_cell_y + wtf_y};
-        edges[7].t = {1 / sqrt2, -1 / sqrt2};
-        edges[7].l = diagonal_lenght;
-
-        contour.setPointCount(8);
-        contour.setFillColor(sf::Color::Red);
-        for (int i = 0; i < 8; ++i) {
-            edges[i].from *= static_cast<int>(cell_size.x);
-            contour.setPoint(i, static_cast<sf::Vector2f>(edges[i].from));
-        }
-    }
+    sf::Vector2i pos;
+    sf::Vector2f orient;
+    std::string name;
 };
 
 class Buildings {

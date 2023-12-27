@@ -18,13 +18,29 @@
 #define MAXFLOAT  3.402823466e+38;
 #endif 
 
+
+//! OMP THREADS
+#ifndef NUM_OMP_INTERACTION_THREADS
+#define NUM_OMP_INTERACTION_THREADS 6
+#endif
+#ifndef NUM_OMP_FOW_THREADS
+#define NUM_OMP_FOW_THREADS 6
+#endif
+#ifndef NUM_OMP_NS_THREADS
+#define NUM_OMP_NS_THREADS 6
+#endif
+#ifndef NUM_OMP_WALLS_THREADS
+#define NUM_OMP_WALLS_THREADS 6
+#endif
+
+
 typedef uint32_t u_int_32_t;
 typedef uint16_t u_int_16_t;
 
 #pragma once
 
 constexpr int N_MAX_NAVIGABLE_BOIDS = 4000;
-constexpr int N_MAX_NEIGHBOURS = 1000;
+constexpr int N_MAX_NEIGHBOURS = 500;
 
 const std::array<sf::Vector2f, 8> t_vectors = {sf::Vector2f{1.f, 0.f}, sf::Vector2f{1.f / M_SQRT2, 1.f / M_SQRT2},
                                                sf::Vector2f{0, 1},     sf::Vector2f{-1 / M_SQRT2, 1 / M_SQRT2},
@@ -38,6 +54,8 @@ typedef int BoidInd;
 
 constexpr int MAX_UNITS_PER_PLAYER = 200;
 constexpr int N_PLAYERS = 2;
+
+constexpr int NUM_OMP_THREADS_FOW = 4;
 constexpr int N_MAX_THREADS = 12; //! how to find this at compile time?
 
 struct EdgeVInd {
@@ -76,11 +94,9 @@ constexpr float RFLOCK = 50;
 constexpr float RALLIGN = 50;
 
 template <typename T> inline float dot(const T& a, const T& b) { return a.x * b.x + a.y * b.y; }
-
 template <typename T> inline float dot(const T&& a, const T&& b) { return a.x * b.x + a.y * b.y; }
 
 template <typename T> inline float norm2(const T& a) { return dot(a, a); }
-
 template <typename T> inline float norm(const T& a) { return std::sqrt(norm2(a)); }
 
 template <typename T> inline float dist2(const T& a, const T& b) { return dot(a - b, a - b); }

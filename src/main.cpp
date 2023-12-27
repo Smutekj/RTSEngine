@@ -30,12 +30,12 @@ void generateRandomPositionsAroundBox(sf::Vector2f box_size, int n_positions, Ga
     for (int i = 0; i < n_positions / 4; ++i) {
         pos.x = rand() / static_cast<float>(RAND_MAX) * box_size.x / 10.f;
         pos.y = box_size.y - rand() / static_cast<float>(RAND_MAX) * box_size.y / 10.f;
-        game.addUnit(0, pos, 0);
+        game.addUnit(1, pos, 0);
     }
     for (int i = 0; i < n_positions / 4; ++i) {
         pos.x = rand() / static_cast<float>(RAND_MAX) * box_size.x / 10.f;
         pos.y = rand() / static_cast<float>(RAND_MAX) * box_size.y / 10.f;
-        game.addUnit(0, pos, 0);
+        game.addUnit(1, pos, 0);
     }
 
     // for (int i = 0; i < n_positions; ++i) {
@@ -68,17 +68,19 @@ void generateRandomPositionsInCircles(const float density,
                                       int n_positions,
                                       Game& game
                                       ) {
-
+    const int n_inserted = n_positions;
     while(n_positions > 0){
         const auto circle = randomCircle(100);
         int n_in_circle = std::min({static_cast<int>(std::floor(M_PI*circle.radius_sq * density)), n_positions}); 
         const auto range_x = 2*std::sqrt(circle.radius_sq);
         const sf::Vector2f r0 = {circle.r.x - range_x/2.0f, circle.r.y - range_x/2.0f};
         sf::Vector2f r = r0;
+        int player_ind;
+        n_positions > n_inserted/2 ? player_ind = 0 : player_ind = 1;
         const float dx = std::sqrt(1.f/density); 
         while(n_in_circle > 0 and r.y < r0.y + range_x){
             if(dist2(r, circle.r) < circle.radius_sq){
-                game.addUnit(0, r, 0);
+                game.addUnit(player_ind, r, 0);
                 n_positions--;
                 n_in_circle--;
             }
@@ -104,7 +106,7 @@ int main() {
     sf::Vector2f box_size = asFloat({BOX[0], BOX[1]});
 
     auto view = window.getView();
-    view.setViewport({0.1f, 0.0f, 1.0f, 1.0f});
+    view.setViewport({0.1f, 0.0f, 0.9f, 1.0f});
     view.setCenter(box_size / 2.f);
     view.setSize(box_size.x, box_size.x * (1080.f / 1920.f));
     window.setView(view);
@@ -118,15 +120,13 @@ int main() {
     float frame_time = maximum_frame_time;
     sf::Vector2i n_cells = {N_CELLS[0], N_CELLS[1]};
     sf::Vector2f cell_size = asFloat({BOX[0] / n_cells.x, BOX[1] / n_cells.y});
-
-    auto triangles_s_grid = std::make_shared<SearchGrid>(n_cells / 10, cell_size * 10.f);
-    auto p_cdt = std::make_unique<Triangulation>(*triangles_s_grid);
-    auto p_pf = std::make_unique<PathFinder>(p_cdt.get());
-
+   
     DebugInfo dbg; 
 
-    p_cdt->window = &window;
-    p_cdt->dbg = &dbg;
+    auto triangles_s_grid = std::make_shared<SearchGrid>(n_cells / 8, cell_size * 8.f);
+    auto p_cdt = std::make_unique<Triangulation>(*triangles_s_grid, dbg);
+    auto p_pf = std::make_unique<PathFinder>(p_cdt.get());
+
     p_cdt->createBoundaryAndSuperTriangle();
 
     Game game(*p_pf, *p_cdt, n_cells, box_size);
@@ -136,7 +136,7 @@ int main() {
     UI ui(game, *game.p_fow_, dbg, *game.bc_);
 
     // generateRandomPositionsAroundBox(box_size, 1, game);
-    generateRandomPositionsInCircles(0.005f, box_size, 4000, game);
+    generateRandomPositionsInCircles(0.05f, box_size, 4000, game);
 
     int i = 0;
     unsigned long long time_of_n_frames = 0;
@@ -165,7 +165,6 @@ int main() {
             time_of_n_frames = 0;
             i = 0;
             std::cout << "drawing took: " << drawing_time << " us\n";
-            // std::cout << "real fps is: " << static_cast<float>(n_frames_fps) / time_of_n_frames * 1e6 << " fps\n";
             std::cout << "game step took: " << game_step_time << " us\n";
         }
 
