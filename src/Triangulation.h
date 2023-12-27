@@ -116,22 +116,23 @@ class TriangleFinder {
 class Triangulation {
 
   public:
-    ::std::vector<std::array<VertInd, 3>> tri_ind2vert_inds_;
+    std::vector<std::array<VertInd, 3>> tri_ind2vert_inds_;
 
     std::vector<Vertex> vertices_; //! coordinates of vertices (can be only integers!)
     std::vector<Triangle> triangles_;
 
     std::unordered_set<EdgeI, EdgeHash2> fixed_edges2_;
 
-    Grid* p_grid; //! underlying grid that will be used for finding triangles containing query point
-
     std::vector<TriInd> cell2triangle_ind_;
-    TriInd last_found_tri_ind_ = 0; //! cached index of last found triangle (in a lot of cases new searched triangle is
-                                    //! near previously found one)
-    DebugInfo* dbg; //! for debugging
-    sf::RenderWindow* window;
 
     sf::Vector2f boundary_; //! size of the boundary box
+
+private:
+    TriInd last_found_tri_ind_ = 0; //! cached index of last found triangle (in a lot of cases new searched triangle is
+                                    //! near previously found one)
+    Grid* p_grid; //! underlying grid that will be used for finding triangles containing query point
+
+    DebugInfo* dbg; //! for debugging
 
   public:
     explicit Triangulation(Grid& s_grid);

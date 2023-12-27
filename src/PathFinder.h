@@ -127,8 +127,16 @@ class PathFinder {
     };
 
 
+    enum class THREAD_STATUS{
+        RUNNING,
+        FREE,
+        FAILED
+    };
+
     std::vector<std::thread> threads_;
     std::vector<std::future<int>> futures_;     //! holds threads doing pathfinding work, return value used to see if the job has ended
+    std::vector<THREAD_STATUS> thread_status_;     //! holds threads doing pathfinding work, return value used to see if the job has ended
+
 
     std::vector<GroupPathData> to_update_groups_;
     std::vector<PathData> to_update_;
@@ -158,37 +166,40 @@ class PathFinder {
     void update();
 
     struct PathAndPortals {
-        std::vector<sf::Vector2f> path;
-        std::vector<Edgef> portals;
+        std::deque<sf::Vector2f> path;
+        std::deque<Edgef> portals;
     };
 
+    PathAndPortals paf;
     PathAndPortals calcPathOfSelection(BoidControler& bc, const std::vector<sf::Vector2f>& r_coords,
                                        const std::vector<float>& radii, const std::vector<int>& selection,
                                        const sf::Vector2f);
     void updatePathOf(const int ind, sf::Vector2f r_start, BoidControler& bc, float radius);
 
-    FunnelData findOptimalPath(const sf::Vector2f r_start, const sf::Vector2f r_end, float radius);
+    Funnel findOptimalPath(const sf::Vector2f r_start, const sf::Vector2f r_end, float radius);
     // FunnelData findSubOptimalPathTriangleEdges(const sf::Vector2f& r_start, const sf::Vector2f r_end, float radius);
     void findSubOptimalPathCenters(const sf::Vector2f r_start, const sf::Vector2f r_end, float radius,
-                                   FunnelData& funnel);
-    void findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r_end, float radius, FunnelData& funnel,
+                                   Funnel& funnel);
+    void findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r_end, float radius, Funnel& funnel,
                                    const int thread_id);
 
     void doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end, BoidControler& bc,
                  const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id);
 
-    FunnelData findSubOptimalPathBasic(const TriInd start_tri_ind, const TriInd end_tri_ind, const sf::Vector2f r_end,
+    Funnel findSubOptimalPathBasic(const TriInd start_tri_ind, const TriInd end_tri_ind, const sf::Vector2f r_end,
                                        float radius);
 
-    FunnelData findShortestPath(const sf::Vector2f r_start, const sf::Vector2f r_end, float radius);
+    Funnel findShortestPath(const sf::Vector2f r_start, const sf::Vector2f r_end, float radius);
     void issuePaths(BoidControler& bc, const std::vector<sf::Vector2f>& r_coords, const std::vector<float>& radii,
                     const std::vector<int>& selection, const sf::Vector2f r_end);
 
   private:
-    //! \brief
+    void setPathOfAgent(int ind, sf::Vector2f r_ind, sf::Vector2f r_end, BoidControler& bc, PathAndPortals& path_and_portals)const;
     float sign(sf::Vector2f a, sf::Vector2f b, sf::Vector2f c) const;
+    bool allThreadsFree(int last_thread_id);
+    bool reducedGraphConsistentWithTriangulation()const;
 
-    void fillFunnelWithCorridor(const ReducedTriangulationGraph::Corridor& edge, int first, int last, FunnelData& fd,
+    void fillFunnelWithCorridor(const ReducedTriangulationGraph::Corridor& edge, int first, int last, Funnel& fd,
                                 bool reverse, bool with_start_or_end) const;
 
     std::pair<TriInd, int> closestPointOnNavigableComponent(const sf::Vector2f& r, const TriInd start_tri_ind,
@@ -196,15 +207,15 @@ class PathFinder {
                                                             const int navigable_component) const;
 
     void fillFunnelData3(const TriInd start, const int reduced_start, const TriInd end, const int reduced_end,
-                         FunnelData& funnel, const std::vector<AstarReducedData>& reduced_vertex2astar_data) const;
+                         Funnel& funnel, const std::vector<AstarReducedData>& reduced_vertex2astar_data) const;
 
     void fillFunnelData2(const TriInd start, const int reduced_start, const TriInd end, const int reduced_end,
-                         FunnelData& funnel) const;
+                         Funnel& funnel) const;
 
-    void fillFunnelData(const TriInd start, const TriInd end, FunnelData& fd) const;
+    void fillFunnelData(const TriInd start, const TriInd end, Funnel& fd) const;
 
     PathAndPortals pathFromFunnel(const sf::Vector2f r_start, const sf::Vector2f r_end, const float radius,
-                                  FunnelData& fd) const;
+                                  Funnel& fd) const;
 
     std::vector<PathFinder::AstarReducedDataPQ>
     initializeReducedAstar(const sf::Vector2f& r_start, const sf::Vector2f& r_end, const TriInd start,

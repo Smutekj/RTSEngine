@@ -57,9 +57,8 @@ Triangulation::Triangulation(Grid& s_grid)
     cell2triangle_ind_.resize(s_grid.n_cells_.x * s_grid.n_cells_.y, -1);
 }
 Triangulation::Triangulation(Grid& s_grid, DebugInfo& db)
-    : Triangulation(s_grid) {
-    dbg = &db;
-}
+    : Triangulation(s_grid) 
+    {dbg = &db;}
 
 Triangulation::Triangulation(Grid& s_grid, std::string filename)
     : Triangulation(s_grid) {
@@ -381,7 +380,7 @@ bool Triangulation::edgesIntersect(const EdgeI e1, const EdgeI e2) const noexcep
     return alpha1 > 0 and alpha1 < 1 and alpha2 > 0 and alpha2 < 1;
 }
 
-//! \returns true if line connecting v11 and v12 intersects with line connecting v21 and v22
+//! \returns value of alpha if line connecting v11 and v12 intersects with line connecting v21 and v22 and -1 if there is no itersection
 float Triangulation::linesIntersect(const sf::Vector2f& v11, const sf::Vector2f& v12, const Vertex& v21,
                                     const Vertex& v22) const noexcept {
 
