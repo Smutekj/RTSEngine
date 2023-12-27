@@ -5,8 +5,11 @@
 //! \param dt time step
 void BoidWorld::update(float dt) {
     for (const auto i : active_inds) {
-        auto v_tot = velocities_[i];
+        auto v_tot =  velocities_[i] + intertia_velocities_[i];
         bool is_holding = (move_states_[i] == MoveState::HOLDING);
+        if(is_holding){
+            v_tot -= velocities_[i];
+        }
         r_coords_[i] += (v_tot) * (dt * !is_holding);
     }
 
@@ -53,21 +56,6 @@ int BoidWorld::activate(int player_ind, sf::Vector2f r_coord, sf::Vector2f vel) 
     ind2player[new_boid_ind] = player_ind;
     active_inds.push_back(new_boid_ind);
     ind_in_active_inds[new_boid_ind] = active_inds.size() - 1;
-
-    // vertices_.setPrimitiveType(sf::Triangles);
-    // auto& circle = boid_inds2draw_data_[new_boid_ind].circle;
-    // const auto n_points = circle.getPointCount();
-    // const auto last = vertices_.getVertexCount();
-    // vertices_.resize(vertices_.getVertexCount() + n_points * 3);
-
-    // for (int point = 0; point < n_points; ++point) {
-    //     vertices_[last + 3 * point].position = circle.getPoint(point);
-    //     vertices_[last + 3 * point].color = sf::Color::Green;
-    //     vertices_[last + 3 * point + 1].position = circle.getPoint((point + 1) % n_points);
-    //     vertices_[last + 3 * point + 1].color = sf::Color::Green;
-    //     vertices_[last + 3 * point + 2].position = r_coord;
-    //     vertices_[last + 3 * point + 2].color = sf::Color::Green;
-    // }
 
     return new_boid_ind;
 }
@@ -126,7 +114,7 @@ void BoidWorld::draw(sf::RenderWindow& window) {
     for (const auto i : active_inds) {
         const auto& r = r_coords_[i];
         const auto angle = orientation_[i];
-        const auto radius = boid_inds2draw_data_[i].circle.getRadius();
+        const auto radius = 3.f; //boid_inds2draw_data_[i].circle.getRadius();
         const auto player_ind = ind2player[i];
         tri.setPoint(0, {-0.7f * radius, -0.5f * radius});
         tri.setPoint(1, {radius, 0});
@@ -191,7 +179,7 @@ void BoidWorld::draw(sf::RenderWindow& window, BoidControler& bc) {
     for (const auto i : active_inds) {
         const auto& r = r_coords_[i];
         const auto angle = orientation_[i];
-        const auto radius = boid_inds2draw_data_[i].circle.getRadius();
+        const auto radius = 3.f;//boid_inds2draw_data_[i].circle.getRadius();
         const auto player_ind = ind2player[i];
         tri.setPoint(0, {-0.7f * radius, -0.5f * radius});
         tri.setPoint(1, {radius, 0});
@@ -220,6 +208,5 @@ void BoidWorld::draw(sf::RenderWindow& window, BoidControler& bc) {
         forces[i].reset();
     }
     window.draw(vertices_);
-
 }
 

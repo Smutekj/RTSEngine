@@ -160,8 +160,8 @@ struct ControlForces {
 
     sf::Vector2f accumulate(float dt, const std::array<float, Behaviour::COUNT>& proportions) const {
         return (avoid * proportions[Behaviour::AVOID] + seek * proportions[Behaviour::SEEK] +
-                push * proportions[Behaviour::PUSH] + align * proportions[Behaviour::ALIGN] +
-                scatter * proportions[Behaviour::SCATTER] + repulse * proportions[Behaviour::REPULSE]) *
+                0.f*push * proportions[Behaviour::PUSH] + align * proportions[Behaviour::ALIGN] +
+                scatter * proportions[Behaviour::SCATTER] + 0.f*repulse * proportions[Behaviour::REPULSE]) *
                 dt;
     }
 
@@ -312,7 +312,6 @@ class BoidControler {
     void removeHoldingAgents( const std::vector<int>& selection);
 
     //----------------------------------------------------// 
-
     BoidControler(BoidWorld* world, NeighbourSearcher* ns, std::shared_ptr<Edges> map, sf::Vector2f box_size);
 
     void activate(int player_ind, const float max_speed, const float radius, const float turn_rate);
@@ -334,39 +333,15 @@ class BoidControler {
     sf::Vector2f getPathEnd(int boid_ind) const { return path_data_[boid_ind].path_end; }
 
     void setPathData(int boid_ind, sf::Vector2f target, const Edgef& portal);
-    void setPathDataNext(int boid_ind, sf::Vector2f target, const Edgef& portal) {
-        path_data_[boid_ind].next_move_target = target;
-        path_data_[boid_ind].next_portal = portal;
-    }
-    void setAttackTarget(BoidInd boid_ind, BoidInd target_ind) { attack_targets_[boid_ind] = target_ind; }
-    void addCommandGroup(const std::vector<BoidInd>& selection) {
-        commander_groups_.addGroup(selection);
-    }
-    void updateInactiveGroupInd() {
-        commander_groups_.updateInactives();
-    }
-
-    void setPathEnds(const std::vector<BoidInd>& selection, const sf::Vector2f path_end){
-        for (const auto selected : selection) {
-            setPathEnd(selected, path_end);
-            commander_groups_.removeFromGroup(selected);
-        }
-        if (selection.size() > 0) {
-            addCommandGroup(selection);
-        }
-    }
-
-    void setStanding( const std::vector<BoidInd>& selection){
-        for (int sel : selection) {
-            world_.move_states_[sel] = MoveState::STANDING;
-            standing_pos_[sel] = world_.r_coords_[sel];
-            commander_groups_.removeFromGroup(sel);
-        }
-        removeHoldingAgents(selection);
-    }
-
+    void setPathDataNext(int boid_ind, sf::Vector2f target, const Edgef& portal);
+    void setAttackTarget(BoidInd boid_ind, BoidInd target_ind);
+    void addCommandGroup(const std::vector<BoidInd>& selection);
+    void updateInactiveGroupInd();
+    void setPathEnds(const std::vector<BoidInd>& selection, const sf::Vector2f path_end);
+    void setStanding( const std::vector<BoidInd>& selection);
     void formFormation(const sf::Vector2f center, const sf::Vector2f orientation, const std::vector<int>& selection,
                        const uint8_t n_collumns = 5);
+
     void attack(float dt);
 
 
@@ -388,6 +363,7 @@ class BoidControler {
     void avoid(float dt);
     void repulseBoidsPairList(float dt);
     void repulseBoidsNeighbourList(float dt);
+    void repulseBoidsNeighbourList2(float dt);
 
     void avoidHoldingAgents(float dt, sf::RenderWindow& window);
     void allign(float dt);
@@ -399,6 +375,7 @@ class BoidControler {
     void seek();
     void turnAll();
     void truncateVels();
+    void truncateInertiaVels();
     
     bool hasReachedEnd(int selected, const sf::Vector2f dr_to_target);
     bool needsUpdating(int selected, const sf::Vector2f r);
