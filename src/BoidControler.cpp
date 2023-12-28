@@ -147,6 +147,8 @@ void BoidControler::updateState(const float dt, sf::RenderWindow& win) {
         std::cout << "repulsion took: " << repulsion_time << " us\n";
         std::cout << "scatter took: " << scatter_time << " us\n";
     }
+
+    // attack(dt);
 }
 
 bool BoidControler::isStuck(int boid_ind){
@@ -214,7 +216,7 @@ void BoidControler::repulseBoidsNeighbourList(float dt) {
 #pragma omp parallel num_threads(NUM_OMP_INTERACTION_THREADS)
 {
         #pragma omp for 
-        for (int ind_i = 0; ind_i < world_.active_inds.size(); ++ind_i) {
+        for (int ind_i : world_.active_inds) {
             const auto& neighbour_data = ns_.getNeighbourData(ind_i, 0);
             const auto n_last_neighbour = ns_.last_i[ind_i];
 
@@ -277,11 +279,12 @@ void BoidControler::repulseBoidsNeighbourList2(float dt) {
 #pragma omp parallel num_threads(NUM_OMP_INTERACTION_THREADS)
 {
         #pragma omp for 
-        for (int ind_i = 0; ind_i < world_.active_inds.size(); ++ind_i) {
+        for (auto ind_i : world_.active_inds) {
             const auto& data = ns_.getInteractionData(ind_i, 0);
             const auto n_last_neighbour = ns_.last_i[ind_i];
             const auto mass_i = 4.0f*std::pow(radii_[ind_i], 3.f);
             const auto state_i = world_.move_states_[ind_i];
+            const auto player_ind = world_.ind2player[ind_i];
 
             sf::Vector2f repulsion_force(0,0);
             sf::Vector2f push_force(0,0);
@@ -298,14 +301,14 @@ void BoidControler::repulseBoidsNeighbourList2(float dt) {
                 const auto state_j = n_data.state;
                 const auto alpha = 0.5f; // radii_[ind_i] / pair.r_collision;
                 const bool is_same_group = commander_groups_.isSameGroup(ind_i, boid_ind_j);
-                const bool is_same_player =  world_.ind2player[ind_i] != world_.ind2player[boid_ind_j];
+                const bool is_same_player =  player_ind != n_data.player_ind;
                 if(x > 0.75f)  [[unlikely]] 
                 {
-                    const auto x_prime = (x - 0.00000000001f + 1.0f);
+                    const auto x_prime = (x - 0.00000000001f);
                     repulsion_force += -dr / norm(dr) * std::min(100.f, 3.f * x_prime*x_prime * x_prime)* mass_j/(mass_i+mass_j); 
                 }
 
-                if (state_i == MoveState::MOVING and world_.move_states_[boid_ind_j] == MoveState::MOVING 
+                if (state_i == MoveState::MOVING and state_j == MoveState::MOVING 
                      and is_same_group and x > r_collision_sq / (RALLIGN * RALLIGN)) {
                     align_data_[ind_i].direction += forces_[ind_i].seek;
                     align_data_[ind_i].count++;
@@ -347,14 +350,14 @@ void BoidControler::attack(float dt) {
             auto r_selected = r_coords[ind];
             int nearest_neighbour = -1;
             float min_dist2 = MAXFLOAT;
-            const auto& n_data = ns_.getNeighbourData(ind, 0);
+            const auto& n_data = ns_.getInteractionData(ind, 0);
             const auto last_ind = ns_.last_i[ind]; 
             for (int j = 0; j < last_ind; ++j) {
                 const auto& data = n_data[j];
-                const auto neighbour_ind = data.second;
-
+                const auto neighbour_ind = data.second; 
+                const auto neighbour_player_ind = world_.ind2player[neighbour_ind];
                 const auto d2 = dist2(r_coords[neighbour_ind], r_selected);
-                if (d2 < min_dist2 and player_ind != world_.ind2player[neighbour_ind]) {
+                if (d2 < min_dist2 and player_ind != neighbour_player_ind) {
                     min_dist2 = d2;
                     nearest_neighbour = neighbour_ind;
                 }
@@ -760,7 +763,7 @@ void BoidControler::finalizeSeek(int selected, sf::Vector2f r, sf::Vector2f dr_t
     auto dist_to_end = dist(path_end, r);
     if (dist_to_end < 2 * radius) {
         //! we inform all neighbours in our command group within some radius that they have reached the end 
-        const auto& data = ns_.getNeighbourData(selected, 2.69 * 2.69 * radius * radius);
+        const auto& data = ns_.getInteractionData(selected, 2.69 * 2.69 * radius * radius);
         for (int i = 0; i < ns_.last_i[selected]; i++) {
             const auto neighbour = data[i].second;
             const auto dr = world_.r_coords_[neighbour];
@@ -788,7 +791,7 @@ void BoidControler::seek() {
     auto& r_coords = world_.r_coords_;
 
     for (const auto selected : world_.active_inds) {
-        const auto& verlet_list = ns_.getNeighbourData(selected, 1.1 * RHARD * RHARD);
+        const auto& verlet_list = ns_.getInteractionData(selected, 1.1 * RHARD * RHARD);
 
         if (world_.move_states_[selected] == MoveState::MOVING) {
             const auto& r = r_coords[selected];

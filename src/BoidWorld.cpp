@@ -176,6 +176,7 @@ void BoidWorld::draw(sf::RenderWindow& window, BoidControler& bc) {
                                         return norm2(f1.align) < norm2(f2.align);});
     const auto max_force_norm_align = std::max({norm(max_force->align), 1.f});
 
+    int vertex_ind = 0;
     for (const auto i : active_inds) {
         const auto& r = r_coords_[i];
         const auto angle = orientation_[i];
@@ -202,10 +203,11 @@ void BoidWorld::draw(sf::RenderWindow& window, BoidControler& bc) {
         // color.g = static_cast<sf::Uint8>(std::floor(norm(forces[i].push)/max_force_norm_push * 255.f));
 
 
-        vertices_[i * 3 + 0] = {r_coords_[i] + a.transformPoint(tri.getPoint(0)), color};
-        vertices_[i * 3 + 1] = {r_coords_[i] + a.transformPoint(tri.getPoint(1)), color};
-        vertices_[i * 3 + 2] = {r_coords_[i] + a.transformPoint(tri.getPoint(2)), color};
+        vertices_[vertex_ind  * 3 + 0] = {r + a.transformPoint(tri.getPoint(0)), color};
+        vertices_[vertex_ind  * 3 + 1] = {r + a.transformPoint(tri.getPoint(1)), color};
+        vertices_[vertex_ind  * 3 + 2] = {r + a.transformPoint(tri.getPoint(2)), color};
         forces[i].reset();
+        vertex_ind++;
     }
     window.draw(vertices_);
 }

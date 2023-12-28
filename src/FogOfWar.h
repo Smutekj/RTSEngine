@@ -82,7 +82,7 @@ class FogOfWarV2 {
 
     std::vector<VisionField> player2vision_field_;
 
-    std::array<std::vector<VisionData>, FOW::N_STRIPES> stripe2particle_data_;
+    std::array<std::array<std::vector<VisionData>, FOW::N_STRIPES>, N_PLAYERS> player2stripe2particle_data_;
 
     FogOfWarV2(sf::Vector2i box_size, sf::Vector2f cell_size);
 
@@ -90,10 +90,7 @@ class FogOfWarV2 {
                 const std::vector<float>& radius,
                 const std::vector<int>& active_inds,
                 const std::vector<int>& player_inds);
-    void update2(const std::vector<sf::Vector2f>& r_coords,
-                const std::vector<float>& radius,
-                const std::vector<int>& active_inds,
-                const std::vector<int>& player_inds);
+
 
     void addToStripe(int player_ind, int stripe_ind, float x_left, float x_right);
     void addToRevealed(int player_ind, int stripe_ind, float x_left, float x_right);

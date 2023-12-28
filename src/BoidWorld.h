@@ -5,6 +5,7 @@ class BoidControler;
 
 enum class MoveState { MOVING, STANDING, HOLDING };
 
+
 struct BoidWorld {
 
     std::vector<int> boid_inds2cellind_;

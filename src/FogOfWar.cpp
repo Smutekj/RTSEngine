@@ -248,7 +248,7 @@ void FogOfWarV2::update( const std::vector<sf::Vector2f>& r_coords,
     
     for (const auto ind : active_inds) {
         const int stripe_ind = std::floor(r_coords[ind].y / dy_);
-        stripe2particle_data_[stripe_ind].push_back({r_coords[ind], radius[ind]*radius[ind], player_inds[ind]});
+        player2stripe2particle_data_[player_inds[ind]][stripe_ind].push_back({r_coords[ind], radius[ind]*radius[ind], player_inds[ind]});
     }
 
 size_t max_n_stripes = 0;
@@ -267,15 +267,17 @@ size_t max_n_stripes = 0;
 
 #pragma omp parallel num_threads(NUM_OMP_THREADS_FOW)
 {   
+    for(int player_ind = 0; player_ind < N_PLAYERS; ++player_ind){
+        auto& player_data = player2stripe2particle_data_.at(player_ind);
     #pragma omp for 
         for (int stripe_ind_i = 0; stripe_ind_i < FOW::N_STRIPES; ++stripe_ind_i)
          {
-
+            const auto& data_in_stripe = player_data.at(stripe_ind_i);
             const int ind_max = std::min({FOW::N_STRIPES-1, stripe_ind_i + FOW::N_MAX_DELTA_STRIPEIND});
             const int ind_min = std::max({0, stripe_ind_i - FOW::N_MAX_DELTA_STRIPEIND});
 
             //! central stripe is done separately here because it does not have a counterpart
-            for(const auto& data : stripe2particle_data_[stripe_ind_i]){
+            for(const auto& data : data_in_stripe){
                 const float delta_x = std::sqrt(data.radius_sq);
                 addToStripe(data.player_ind, stripe_ind_i, data.r.x - delta_x, data.r.x + delta_x);
             }
@@ -284,24 +286,26 @@ size_t max_n_stripes = 0;
 
                 int stripe_ind_left = stripe_ind_i - delta_i;
                 if(stripe_ind_left < 0){continue;} 
-                for(const auto& data : stripe2particle_data_[stripe_ind_left]){
+                for(const auto& data : player_data[stripe_ind_left]){
                     const float delta_x = std::sqrt(data.radius_sq - dy*dy);
                     addToStripe(data.player_ind, stripe_ind_i, data.r.x - delta_x, data.r.x + delta_x);
                 }
 
                 int stripe_ind_right = stripe_ind_i + delta_i;
                 if(stripe_ind_right >= FOW::N_STRIPES){continue;}
-                for(const auto& data : stripe2particle_data_[stripe_ind_right]){
+                for(const auto& data : player_data[stripe_ind_right]){
                     const float delta_x = std::sqrt(data.radius_sq - dy*dy);
                     addToStripe(data.player_ind, stripe_ind_i, data.r.x - delta_x, data.r.x + delta_x);
                 }
             }
         }
-    
+        std::for_each(player_data.begin(), player_data.end(), [](auto& stripe_data){
+                stripe_data.clear();
+            });
+    }    
 } //! OMP_PARALLEL_END
 
-        std::for_each(stripe2particle_data_.begin(), stripe2particle_data_.end(), [](auto& stripe_data){
-            stripe_data.clear();
-        });
-        reveal();
+    reveal();
+
     }
+

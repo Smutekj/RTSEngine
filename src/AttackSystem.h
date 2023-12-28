@@ -23,14 +23,9 @@ struct Projectile {
     float time_alive = 0.;
     float damage = 1.0f;
     BoidInd target_ind = -1;
-    //    BoidInd shooting_unit_ind;
 
     Projectile() {
-        //        shape.setPointCount(3);
         shape.setRadius(1.f);
-        //        shape.setPoint(0, {0,0});
-        //        shape.setPoint(1, {1,0});
-        //        shape.setPoint(2, {0.5, 2.0});
         shape.setFillColor(sf::Color::Black);
     }
 
@@ -56,6 +51,7 @@ class ProjectileFactory {
         return p;
     }
 };
+
 
 struct Weapon {
 
@@ -96,6 +92,12 @@ struct Weapon {
 //    }
 //};
 
+class UnitTypeManager{
+
+    typedef u_int16_t UnitTypeID;
+
+};
+
 class BoidWorld;
 #include "HealthSystem.h"
 #include "BoidControler.h"
@@ -111,10 +113,11 @@ class AttackSystem {
 
     std::vector<sf::Vector2f>& r_coords;
     const std::vector<int>& active_inds;
+    std::shared_ptr<BoidControler> p_bc_;
     HealthSystem* health_system_;
 
   public:
-    AttackSystem(BoidWorld& world, HealthSystem* hs);
+    AttackSystem(BoidControler& bc, BoidWorld& world, HealthSystem* hs);
 
     void attack(BoidInd att_ind, BoidInd tar_ind) {
         auto& weapon = units_weapons_.at(att_ind);
@@ -191,7 +194,11 @@ class AttackSystem {
         }
 
         for (int active_ind : active_inds) {
-            units_weapons_[active_ind].time_since_shooting += dt;
+            auto& weapon = units_weapons_[active_ind]; 
+            auto attack_target = p_bc_->attack_targets_[active_ind];
+            if(attack_target != -1){
+                attack(active_ind, attack_target);
+            }
         }
     }
 

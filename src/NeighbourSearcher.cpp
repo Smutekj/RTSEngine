@@ -163,7 +163,7 @@ void NeighbourSearcher::fillNeighbourData2(  const std::vector<sf::Vector2f>& r_
     const auto thread_id = omp_get_thread_num();
     auto& nearest_cells = thread_id2nearest_cells.at(thread_id);
     #pragma omp for
-    for (int ind = 0; ind < n_boids; ++ind) {
+    for (auto ind : active_inds) {
         const auto i = active_inds[ind]; 
         const auto r = r_coords[i];
         const auto v = boids_->velocities_[i];
@@ -220,11 +220,7 @@ void NeighbourSearcher::addOnGrid(const std::vector<sf::Vector2f>& r_coords, con
         cell_i_data.back().ind = 0;
     }
 
-    const auto n_boids = boids_->active_inds.size();
-    active_cells_.reserve(n_boids);
-    active_cells_.resize(0);
-
-    for (int boid_ind = 0; boid_ind < n_boids; ++boid_ind) {
+    for (int boid_ind :  boids_->active_inds) {
         const auto cell_ind = s_grid_->coordToCell(boids_->r_coords_[boid_ind]);
         // auto& last_ind_in_cell = cell2boid_inds_[cell_ind].back();
         auto& last_ind_in_cell = cell2data_[cell_ind].back().ind;
@@ -273,7 +269,7 @@ void NeighbourSearcher::addOnGrid(const std::vector<sf::Vector2f>& r_coords,
     active_cells_.resize(0);
     const auto& states = boids_->move_states_;
 
-    for (int boid_ind = 0; boid_ind < n_boids; ++boid_ind) {
+    for (auto boid_ind : active_inds) {
         const auto cell_ind = s_grid_->coordToCell(boids_->r_coords_[boid_ind]);
         auto& last_ind_in_cell = cell2data2_[cell_ind].back().ind;
 

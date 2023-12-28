@@ -71,7 +71,6 @@ Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2
     , cdt(cdt)
     , pf(pf) {
     health_system_ = std::make_unique<HealthSystem>();
-    attack_system_ = std::make_unique<AttackSystem>(world_, health_system_.get());
 
     mouse_selection.setFillColor({0, 0, 255, 69});
     mouse_selection.setOutlineThickness(5);
@@ -84,6 +83,8 @@ Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2
     p_map_grid = std::make_unique<MapGrid>(n_cells, box_size, cell_size);
     p_map_grid->getEdges()->vertices_ = cdt.vertices_;
     bc_ = std::make_unique<BoidControler>(&world_, searcher.get(), p_map_grid->getEdges(), box_size);
+
+    attack_system_ = std::make_unique<AttackSystem>(*bc_, world_, health_system_.get());
 
     boid_ind2unit_type_.resize(N_MAX_NAVIGABLE_BOIDS, 0);
     unit_types_.resize(1);
