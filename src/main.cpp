@@ -136,7 +136,7 @@ int main() {
     UI ui(game, *game.p_fow_, dbg, *game.bc_);
 
     // generateRandomPositionsAroundBox(box_size, 1, game);
-    generateRandomPositionsInCircles(0.05f, box_size, 4000, game);
+    generateRandomPositionsInCircles(0.05f, box_size, 3500, game);
 
     int i = 0;
     unsigned long long time_of_n_frames = 0;

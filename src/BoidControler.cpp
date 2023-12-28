@@ -742,11 +742,11 @@ bool BoidControler::neighboursInFrontReachedEnd(int selected, float radius, sf::
     int n_in_front = 0;
     int n_in_front_standing = 0;
     const auto r = world_.r_coords_[selected];
-    const auto& data = ns_.getNeighbourData(selected, 2.69 * 2.69 * radius * radius);
+    const auto& data = ns_.getInteractionData(selected, 2.69 * 2.69 * radius * radius);
     for (int i = 0; i < ns_.last_i[selected]; i++) {
         const auto neighbour = data[i].second;
         const auto d_r = data[i].dr;
-        if (norm2(d_r) < 2.69 * 2.69 * radius * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+        if (norm2(d_r) < 5.69 * 5.69 * radius * radius && commander_groups_.isSameGroup(selected, neighbour)) {
             if (std::abs(angle_calculator_.angleBetween(d_r, dr_to_target)) < 36) {
                 n_in_front_standing += world_.move_states_[neighbour] == MoveState::STANDING;
                 n_in_front++;
@@ -766,9 +766,9 @@ void BoidControler::finalizeSeek(int selected, sf::Vector2f r, sf::Vector2f dr_t
         const auto& data = ns_.getInteractionData(selected, 2.69 * 2.69 * radius * radius);
         for (int i = 0; i < ns_.last_i[selected]; i++) {
             const auto neighbour = data[i].second;
-            const auto dr = world_.r_coords_[neighbour];
+            const auto dr = data[i].dr;
             const auto dist_to_neighbour = norm(dr);
-            if (dist_to_neighbour < 2.69 * radius && commander_groups_.isSameGroup(selected, neighbour)) {
+            if (dist_to_neighbour < 5 * radius && commander_groups_.isSameGroup(selected, neighbour)) {
                 stopSeeking(neighbour,  world_.r_coords_[neighbour]);
             }
         }
