@@ -28,3 +28,7 @@ By doing **A*** only on "crossroads". (This significantly reduces the number of 
 
 ![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Single2.gif)
 
+# Demonstration: Multiple agents pathfinding with fog of war:
+
+![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Groups.gif)
+
