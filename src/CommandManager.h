@@ -41,7 +41,6 @@ class AttackUnitCommand : Command{
 };
 
 
-#include "FogOfWar.h"
 
 class CommandManager{
 

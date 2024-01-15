@@ -1,7 +1,6 @@
 #include "DebugInfo.h"
 #include "Triangulation.h"
 #include "Grid.h"
-#include "BoidControler.h"
 #include <filesystem>
 
 DebugInfo::DebugInfo() {
@@ -44,24 +43,23 @@ DebugInfo::DebugInfo() {
     boid_info_boundary_.setPosition(-75, 0);
 }
 
-void DebugInfo::drawBoidControler(sf::RenderWindow& window, const BoidControler& controler) {
+// void DebugInfo::drawBoidControler(sf::RenderWindow& window, const BoidControler& controler) {
 
-    sf::Text n_active_boids;
+//     sf::Text n_active_boids;
 
-    const auto& world = controler.world_;
+//     const auto& world = controler.world_;
 
-    sf::RectangleShape arrow1;
-    arrow1.setSize({1, 20});
-    arrow1.setFillColor(sf::Color::Black);
-}
+//     sf::RectangleShape arrow1;
+//     arrow1.setSize({1, 20});
+//     arrow1.setFillColor(sf::Color::Black);
+// }
 
-void DebugInfo::draw(sf::RenderWindow& window, const float fps, const int n_active_boids, const Triangulation& cdt,
-                     const Grid& grid, BoidControler& controler) {
+void DebugInfo::draw(sf::RenderWindow& window, const float fps, const Triangulation& cdt,
+                     const Grid& grid) {
     drawCDT(window, cdt);
     if (settings_.hasAttribute(DebugInfoSettings2::Options::DRAW_BUILDING_GRID)) {
         drawGrid(window, grid);
     }
-    drawBoidInfo(window, n_active_boids);
     drawFPS(window, fps);
 }
 
@@ -171,7 +169,7 @@ void DebugInfo::drawTriangleInds(sf::RenderWindow& window, const std::vector<Tri
         auto v1 = triangle.verts[1];
         auto v2 = triangle.verts[2];
 
-        auto v_t = (v0 + v1 + v2) / 3;
+        auto v_t = calcTriangleCOM(triangle);
         tri_ind_text.setPosition(sf::Vector2f(v_t));
         tri_ind_text.setString(std::to_string(tri_ind));
         tri_ind++;

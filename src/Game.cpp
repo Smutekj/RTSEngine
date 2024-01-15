@@ -1,64 +1,69 @@
 #include <omp.h>
 #include <iostream>
 #include <fstream>
+#include <unordered_set>
 
+#include "ECS.h"
 #include "Game.h"
 #include "MapGrid.h"
-#include "BoidControler.h"
-#include "HealthSystem.h"
-#include "AttackSystem.h"
 #include "UI.h"
-#include "PathFinder.h"
-#include "BoidWorld.h"
 #include "Triangulation.h"
+#include "UnitInitializer.h"
+#include "SoundModule.h"
 
+#include "Systems/SeekSystem.h"
+#include "Systems/PhysicsSystem.h"
+#include "Systems/HealthSystem.h"
+#include "Systems/AttackSystem.h"
 
-
-void Game::updateTriangulation(){
+void Game::updateTriangulation()
+{
     p_map_grid->extractEdgesFromTilesV2(cdt);
     p_map_grid->addAllBuildingsToTriangulation(cdt);
-    pf.update();
+    p_pathfinder_->update();
     p_map_grid->sawOffCorners();
-    p_map_grid->extractVerticesForDrawing(cdt, pf.tri_ind2component_);
+    p_map_grid->extractVerticesForDrawing(cdt, p_pathfinder_->tri_ind2component_);
 }
 
-void readMazeFile(std::string maze_file_name, const int n, const int m){
+void readMazeFile(std::string maze_file_name, const int n, const int m)
+{
     std::ifstream file(maze_file_name);
     std::string text;
     // Use a while loop together with the getline() function to read the file line by line
-    while (getline (file, text)) {
-      
+    while (getline(file, text))
+    {
     }
 }
 
-void Game::removeUnit(BoidInd u_ind) {
-    world_.deactivate(u_ind);
-    health_system_->deactivate(u_ind);
-    attack_system_->deactivate(u_ind);
-    bc_->deactivate(u_ind);
+void Game::removeUnit(BoidInd u_ind)
+{
 }
 
-void Game::addUnit(int player_ind, sf::Vector2f r, int unit_type_ind) {
+void Game::removeUnit(Entity e)
+{
+    p_the_god_->removeEntity(e);
+}
+
+// void Game::removeUnit(int entity_ind) {
+//     p_the_god_->removeEntity({0, entity_ind});
+// }
+
+void Game::addUnit(int player_ind, sf::Vector2f r, int unit_type_ind)
+{
 
     typedef UnitCreatorSettings::Values Values;
 
-    if (world_.active_inds.size() >= N_MAX_NAVIGABLE_BOIDS) {
-        return;
-    }
-    const auto new_boid_ind = world_.activate(player_ind, r, {0, 0});
-    health_system_->activate(new_boid_ind, 5);
-    attack_system_->activate(new_boid_ind, 0);
-
-    const auto& u_type = unit_types_.at(unit_type_ind);
+    const auto &u_type = unit_types_.at(unit_type_ind);
     const auto radius = uc_settings_.values_[Values::RADIUS];
-    const auto max_speed = 1.69f*uc_settings_.values_[Values::MAX_SPEED];
+    const auto max_speed = 1.69f * uc_settings_.values_[Values::MAX_SPEED];
     const auto turn_rate = uc_settings_.values_[Values::TURNRATE];
-    bc_->activate(new_boid_ind, max_speed, radius, turn_rate);
 
-    world_.radii[new_boid_ind] = radius;
+    unit_creator_->initializeUnit(r, player_ind);
+    //                world_.activate(u_ind,  {0, 0}, radius2);
 }
 
-void Game::createUnitType(const float max_speed, const float radius) {
+void Game::createUnitType(const float max_speed, const float radius)
+{
 
     UnitType u_type;
     u_type.max_speed = max_speed;
@@ -66,420 +71,385 @@ void Game::createUnitType(const float max_speed, const float radius) {
     unit_types_.push_back(u_type);
 }
 
-Game::Game(PathFinder& pf, Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2f box_size)
-    : box_size(box_size)
-    , cdt(cdt)
-    , pf(pf) {
-    health_system_ = std::make_unique<HealthSystem>();
+Game::Game(Triangulation &cdt, sf::Vector2i n_cells, sf::Vector2f box_size)
+    : box_size(box_size), cdt(cdt)
+{
 
     mouse_selection.setFillColor({0, 0, 255, 69});
     mouse_selection.setOutlineThickness(5);
 
     const sf::Vector2f cell_size = {box_size.x / asFloat(n_cells).x, box_size.y / asFloat(n_cells).y};
-    p_fow_ = std::make_unique<FogOfWarV2>(static_cast<sf::Vector2i>(box_size), cell_size);
-
-    searcher = std::make_unique<NeighbourSearcher>(box_size, RHARD * 20, world_);
 
     p_map_grid = std::make_unique<MapGrid>(n_cells, box_size, cell_size);
     p_map_grid->getEdges()->vertices_ = cdt.vertices_;
-    bc_ = std::make_unique<BoidControler>(&world_, searcher.get(), p_map_grid->getEdges(), box_size);
 
-    attack_system_ = std::make_unique<AttackSystem>(*bc_, world_, health_system_.get());
+    p_the_god_ = std::make_unique<ECSystem>(*p_map_grid->getEdges());
+    unit_creator_ = std::make_shared<UnitInitializer>(*p_the_god_);
 
-    boid_ind2unit_type_.resize(N_MAX_NAVIGABLE_BOIDS, 0);
-    unit_types_.resize(1);
+    p_pathfinder_ = std::make_shared<PathFinder2>(&cdt);
+
+    auto &ss = p_the_god_->getSystem<SeekSystem>(ComponentID::PATHFINDING);
+    ss.p_pathfinder_ = p_pathfinder_.get();
+    ss.p_cdt_ = &cdt;
+
     createUnitType(0.3, 1 * RHARD);
-    
-    vision_radii_.resize(N_MAX_NAVIGABLE_BOIDS, FOW::R_MAX_VISION);
 }
 int frame = 0;
-bool first_frame = true;
 
+void Game::moveView(sf::RenderWindow &window)
+{
+    auto view = window.getView();
+    auto vp1 = window.getViewport(view);
+    auto vp2 = view.getViewport();
+    const auto view_size = view.getSize(); // * (view.getViewport().width);
+    const auto left_border = window.getViewport(view).left;
+    const auto right_border = left_border + window.getViewport(view).width;
+    const auto top_border = window.getViewport(view).top;
+    const auto bottom_border = top_border + window.getViewport(view).height;
 
+    const auto &mouse_pos = sf::Mouse::getPosition();
+    const auto &mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition());
 
-void Game::parseInput(sf::RenderWindow& window, UI& ui) {
+    bool mouse_in_left_border = mouse_pos.x < 0 + 5;
+    bool mouse_in_top_border = mouse_pos.y < top_border + 5;
+    bool mouse_in_right_border = mouse_pos.x > right_border - 5;
+    bool mouse_in_bottom_border = mouse_pos.y > bottom_border - 5;
+
+    bool right_arrow_pushed = sf::Keyboard::isKeyPressed(sf::Keyboard::Right);
+    bool left_arrow_pushed = sf::Keyboard::isKeyPressed(sf::Keyboard::Left);
+    bool up_arrow_pushed = sf::Keyboard::isKeyPressed(sf::Keyboard::Up);
+    bool down_arrow_pushed = sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
+    if ((mouse_in_right_border || right_arrow_pushed) && mouse_coords.x < Geometry::BOX[0] * 1.05f)
+    {
+        view.move(view_size.x / 100.f, 0);
+    }
+    if ((mouse_in_left_border || left_arrow_pushed) && mouse_coords.x > -Geometry::BOX[0] * 0.05f)
+    {
+        view.move(-view_size.x / 100.f, 0);
+    }
+    if ((mouse_in_bottom_border || down_arrow_pushed) && mouse_coords.y < Geometry::BOX[1] * 1.05f)
+    {
+        view.move(0, view_size.y / 100.f);
+    }
+    if ((mouse_in_top_border || up_arrow_pushed) && mouse_coords.y > -Geometry::BOX[1] * 0.05f)
+    {
+        view.move(0, -view_size.y / 100.f);
+    }
+    window.setView(view);
+}
+
+void Game::parseEvents(sf::RenderWindow &window, UI &ui)
+{
 
     sf::Event event;
-    bool clicked = false;
 
-    while (window.pollEvent(event)) {
-        if (event.type == sf::Event::Closed) {
+    auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
+    while (window.pollEvent(event))
+    {
+
+        if (event.type == sf::Event::Closed)
+        {
             window.close();
         }
-        if (event.type == sf::Event::KeyPressed) {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-                if (game_is_stopped_) {
+        if (event.type == sf::Event::KeyPressed)
+        {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+            {
+                if (game_is_stopped_)
+                {
                     last_pressed_was_space = true;
-                } else {   
+                }
+                else
+                {
                     game_is_stopped_ = true;
                 }
-            } else {
+            }
+            else
+            {
                 ui.onKeyPress(event.key.code);
             }
         }
 
-        if (event.type == sf::Event::KeyReleased) {
-            if (last_pressed_was_space) {
+        if (event.type == sf::Event::KeyReleased)
+        {
+            if (last_pressed_was_space)
+            {
                 game_is_stopped_ = false;
                 last_pressed_was_space = false;
-            } else {
+            }
+            else
+            {
                 ui.onKeyRelease(window);
             }
         }
-        if (event.type == sf::Event::MouseButtonPressed) {
+        if (event.type == sf::Event::MouseButtonPressed)
+        {
             ui.onClick(window);
 
-            if (event.mouseButton.button == sf::Mouse::Left) {
+            if (event.mouseButton.button == sf::Mouse::Left)
+            {
                 const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
                 const auto map_cell_index = p_map_grid->coordToCell(mouse_coords);
-                if (!selection_pending) {
+                if (!selection_pending)
+                {
                     start_position = mouse_coords;
                     mouse_selection.setPosition(start_position);
 
                     end_position = start_position;
                     selection_pending = true;
                 }
-                if (p_map_grid->cell2building_ind_.at(map_cell_index) != -1) {
+                if (p_map_grid->cell2building_ind_.at(map_cell_index) != -1)
+                {
                     selected_building_index = p_map_grid->cell2building_ind_.at(map_cell_index);
                 }
-            } else if (event.mouseButton.button == sf::Mouse::Middle) {
+            }
+            else if (event.mouseButton.button == sf::Mouse::Middle)
+            {
                 view_is_moving = true;
                 start_view_move_position = window.mapPixelToCoords(sf::Mouse::getPosition());
-            } else if (event.mouseButton.button == sf::Mouse::Right) {
-                if (!clicked) {
-                    click_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                };
-                const auto neighbours = searcher->getNeighboursInds(click_position, RHARD * RHARD);
-
-                BoidInd clicked_unit_ind = -1;
-                for (const auto neighbour : neighbours) {
-                    if (world_.ind2player[neighbour] != selected_player) {
-                        clicked_unit_ind = neighbour;
-                        break;
-                    }
-                }
-                bc_->setPathEnds(selection, click_position);
-                bc_->removeHoldingAgents(selection);
-
-                std::chrono::high_resolution_clock path_finding_clock;
-                const auto start = path_finding_clock.now();
-                pf.issuePaths(*bc_, world_.r_coords_, bc_->radii_, selection, click_position);
-                // auto path_and_portals = pf.calcPathOfSelection(*bc_, world_.r_coords_, bc_->radii_, selection, click_position);
-                // path = path_and_portals.path;
-                // portals = path_and_portals.portals;
-                const auto time =
-                    std::chrono::duration_cast<std::chrono::microseconds>(path_finding_clock.now() - start);
-                std::cout << "path finding of selection took: " << time.count() << " us\n" << std::flush;
             }
-        } else if (event.type == sf::Event::MouseMoved) {
+            else if (event.mouseButton.button == sf::Mouse::Right)
+            {
+                // if (!clicked) {
+                click_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+                // };
+                p_the_god_->setMoveState(MoveState::MOVING, selection);
+                p_the_god_->getSystem<SeekSystem>(ComponentID::PATHFINDING).issuePaths(selection, click_position);
+            }
+        }
+        else if (event.type == sf::Event::MouseMoved)
+        {
             ui.onMouseHold(window);
-            if (selection_pending) {
+            if (selection_pending)
+            {
                 end_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
             }
-        } else if (event.type == sf::Event::MouseButtonReleased) {
+        }
+        else if (event.type == sf::Event::MouseButtonReleased)
+        {
             ui.onRelease(window);
 
             view_is_moving = false;
-
-            if (event.mouseButton.button == sf::Mouse::Left) {
+            if (event.mouseButton.button == sf::Mouse::Left)
+            {
                 end_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
                 selection_pending = false;
-                for (auto selected : selection) {
-                    // world_.boid_inds2draw_data_[selected].deselect();
-                }
                 const auto previous_selection = selection;
-                selectInRectangle(world_, start_position, end_position, selection, selected_player);
-                int i = 0;
-                for (auto selected : selection) {
-                    // world_.boid_inds2draw_data_[selected].select();
-                    // if(selected != previous_selection[i]){
-                    //     selection_changed
-                    // }
-                    // i++;
-                }
+                selectInRectangle(*p_the_god_, start_position, end_position, selection, selected_player);
             }
         }
-        if (event.type == sf::Event::MouseWheelMoved) {
+        if (event.type == sf::Event::MouseWheelMoved)
+        {
             auto view2 = window.getView();
-            if (event.mouseWheel.delta > 0) {
+            if (event.mouseWheel.delta > 0)
+            {
                 view2.zoom(0.9f);
-            } else {
+            }
+            else
+            {
                 view2.zoom(1. / 0.9f);
             }
             window.setView(view2);
         }
-    }
 
-    auto view = window.getView();
-    auto vp1 = window.getViewport(view);
-    auto vp2 =view.getViewport();
-    const auto view_size = view.getSize();// * (view.getViewport().width);
-    const auto left_border = window.getViewport(view).left;
-    const auto right_border = left_border + window.getViewport(view).width;
-    const auto top_border = window.getViewport(view).top;
-    const auto bottom_border = top_border + window.getViewport(view).height;
+        if (bulding)
+        {
+            auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, mouse_position, {8, 8});
+            sf::Vector2f building_size = {2.f * p_map_grid->cell_size_.x, 2.f * p_map_grid->cell_size_.y};
+            sf::Vector2f lower_left_coord = {lower_left_cell_coord.x * p_map_grid->cell_size_.x,
+                                             lower_left_cell_coord.y * p_map_grid->cell_size_.y};
+            sf::Vector2f center_coord = lower_left_coord + building_size / 2.f;
 
-    const auto& mouse_pos = sf::Mouse::getPosition();
-    const auto& mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition());
+            if (event.type == sf::Event::MouseButtonReleased)
+            {
+                p_map_grid->buildBuilding(mouse_position, {8, 8}, cdt);
+                bulding = false;
+                sf::Clock time;
+                p_pathfinder_->update();
+                buildings.load("", p_map_grid->buildings_);
+                // std::cout << "pathfinder updating took: " << time.getElapsedTime().asMilliseconds() << " ms\n";
+            }
+        }
+        if (event.type == sf::Event::KeyPressed)
+        {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::C))
+            {
+                const auto clicked_grid_point = p_map_grid->cellCoords(p_map_grid->coordToCell(mouse_position));
+                p_map_grid->createRandomBlob(clicked_grid_point);
+                updateTriangulation();
+            }
+        }
+    }
+}
 
-    bool mouse_in_left_border       = mouse_pos.x < 0+ 5;
-    bool mouse_in_top_border        = mouse_pos.y < top_border + 5;
-    bool mouse_in_right_border      = mouse_pos.x > right_border-5;
-    bool mouse_in_bottom_border       = mouse_pos.y > bottom_border-5;
+//! \brief parse events and normal input
+//! \note  right now this is just a placeholder code until I make a nice OOP solution with bindings and stuff
+void Game::parseInput(sf::RenderWindow &window, UI &ui)
+{
 
-    bool right_arrow_pushed    = sf::Keyboard::isKeyPressed(sf::Keyboard::Right);
-    bool left_arrow_pushed     = sf::Keyboard::isKeyPressed(sf::Keyboard::Left);
-    bool up_arrow_pushed        = sf::Keyboard::isKeyPressed(sf::Keyboard::Up);
-    bool down_arrow_pushed     = sf::Keyboard::isKeyPressed(sf::Keyboard::Down); 
-    if (mouse_in_right_border || right_arrow_pushed) {
-        view.move(view_size.x / 100.f, 0);
-    }
-    if (mouse_in_left_border || left_arrow_pushed) {
-        view.move(-view_size.x / 100.f, 0);
-    }
-    if (mouse_in_bottom_border || down_arrow_pushed) {
-        view.move(0, view_size.y / 100.f);
-    }
-    if (mouse_in_top_border || up_arrow_pushed) {
-        view.move(0, -view_size.y / 100.f);
-    }
-    window.setView(view);
+    // bool clicked = false;
+    parseEvents(window, ui);
+    moveView(window);
 
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Right) and sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) {
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Right) and sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
+    {
         auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
-        auto nearest_neigbhours = searcher->getNeighboursInds(mouse_position, RHARD * RHARD * 30);
+        auto nearest_neigbhours = p_the_god_->getSystem<PhysicsSystem>(ComponentID::PHYSICS).p_ns_->getNeighboursIndsFull(click_position, 5 * RHARD);
+
         float radius = RHARD;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+        {
             radius = 3 * RHARD;
         }
-        if (nearest_neigbhours.empty()) {
+        if (nearest_neigbhours.empty())
+        {
             //                UnitInd u_ind = {0, static_cast<unsigned  char> (selected_player)} ;
             addUnit(selected_player, static_cast<sf::Vector2f>(mouse_position), 0);
-            //                world_.activate(u_ind,  {0, 0}, radius2);
         }
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::V)) {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::V))
+    {
         drawing = true;
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+    {
         drawing = false;
         bulding = false;
         selected_building_index = -1;
         selection.clear();
     }
-    if (drawing) {
+    if (drawing)
+    {
         auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
         const sf::Vector2i building_size = {100, 100};
         auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, mouse_position, building_size);
 
-        if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and wall_clock.getElapsedTime().asSeconds() > 0.4) {
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
+        {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and wall_clock.getElapsedTime().asSeconds() > 0.4)
+            {
                 wall_clock.restart();
                 p_map_grid->generateRandomWalls(mouse_position, {3000, 400}, 200);
                 p_map_grid->updateBoundaryTypesLocally(lower_left_cell_coord, {3000, 400});
-            } else {
+            }
+            else
+            {
                 p_map_grid->buildWall(mouse_position, building_size);
                 p_map_grid->updateBoundaryTypesLocally(lower_left_cell_coord, building_size);
-                if(p_map_grid->walls_drawable_.size() > 10000){
+                if (p_map_grid->walls_drawable_.size() > 10000)
+                {
                     updateTriangulation();
                     p_map_grid->walls_drawable_.clear();
                 }
             }
         }
-        if (event.type == sf::Event::MouseButtonReleased) {
-            p_map_grid->updateBoundaryTypes2();
-            p_map_grid->sawOffCorners();
-            drawing = false;
-        }
+        // if (event.type == sf::Event::MouseButtonReleased) {
+        //     p_map_grid->updateBoundaryTypes2();
+        //     p_map_grid->sawOffCorners();
+        //     drawing = false;
+        // }
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::F)) {
-        bc_->formFormation(window.mapPixelToCoords(sf::Mouse::getPosition(window)), {0, 0}, selection);
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::E) &&  explosion_time.getElapsedTime().asSeconds()>0.05f) {
-        bc_->addExplosion(window.mapPixelToCoords(sf::Mouse::getPosition(window)));
-        explosion_time.restart();
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::B)) {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::B))
+    {
         bulding = true;
         building_clock.restart();
     }
     if (bulding and sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) or
         (bulding and sf::Keyboard::isKeyPressed(sf::Keyboard::B) and
-         building_clock.getElapsedTime().asSeconds() > 0.5)) {
+         building_clock.getElapsedTime().asSeconds() > 0.5))
+    {
         bulding = false;
     }
-    if (bulding) {
-        auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, mouse_position, {8, 8});
-        sf::Vector2f building_size = {2.f * p_map_grid->cell_size_.x, 2.f * p_map_grid->cell_size_.y};
-        sf::Vector2f lower_left_coord = {lower_left_cell_coord.x * p_map_grid->cell_size_.x,
-                                         lower_left_cell_coord.y * p_map_grid->cell_size_.y};
-        sf::Vector2f center_coord = lower_left_coord + building_size / 2.f;
 
-        if (event.type == sf::Event::MouseButtonReleased) {
-            p_map_grid->buildBuilding(mouse_position, {8, 8}, cdt);
-            bulding = false;
-            sf::Clock time;
-            pf.update();
-            buildings.load("", p_map_grid->buildings_);
-            // std::cout << "pathfinder updating took: " << time.getElapsedTime().asMilliseconds() << " ms\n";
-        }
-    }
-
+    //! generate random buildings (useful for testing stuff)
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and sf::Keyboard::isKeyPressed(sf::Keyboard::B) and
-        building_clock2.restart().asSeconds() > 0.2) {
-        for (int i = 0; i < 1 * 200; ++i) {
-            const float x = static_cast<float>(rand()) / RAND_MAX * box_size.x;
-            const float y = static_cast<float>(rand()) / RAND_MAX * box_size.y;
+        building_clock2.restart().asSeconds() > 0.2)
+    {
+        for (int i = 0; i < 1 * 200; ++i)
+        {
+            auto [x, y] = randPoint(0, Geometry::BOX[0], 0, Geometry::BOX[1]);
             auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, {x, y}, {4, 4});
             p_map_grid->buildBuilding({x, y}, {8, 8}, cdt);
         }
         buildings.load("", p_map_grid->buildings_);
-        pf.update();
-        if (!cdt.triangulationIsConsistent()) {
+        p_pathfinder_->update();
+        if (!cdt.triangulationIsConsistent())
+        {
             throw std::runtime_error("triangulation not consistent!");
         }
         bulding = false;
     }
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) and sf::Keyboard::isKeyPressed(sf::Keyboard::T) and
-        building_clock.restart().asSeconds() > 0.3f) {
+        building_clock.restart().asSeconds() > 0.3f)
+    {
         updateTriangulation();
     }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D) and building_clock.restart().asSeconds() > 0.5) {
-        //            cdt = Triangulation(*p_grid); //! this is just retarded; ...
-        //            edges = Edges();
-        //            cdt.createBoundaryAndSuperTriangle();
-        //            pf.update();
-        //
-        if (selected_building_index != -1) {
+    //! delete a building
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D) and building_clock.restart().asSeconds() > 0.5)
+    {
+        //    cdt = Triangulation(*p_grid); //! this is just retarded; ...
+        //    edges = Edges();
+        //    cdt.createBoundaryAndSuperTriangle();
+        //    p_pathfinder_->update();
+
+        if (selected_building_index != -1)
+        {
             p_map_grid->removeBuilding(selected_building_index, cdt);
-            pf.update();
+            p_pathfinder_->update();
             selected_building_index = -1;
         }
     }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A) and !selection.empty()) {
-        for (int sel : selection) {}
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1)) {
+    //! player switching (useful for testing)
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1))
+    {
         selected_player = 0;
+        p_the_god_->getSystem<VisionSystem>(ComponentID::VISION).selected_player_ind = 0;
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num2)) {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num2))
+    {
         selected_player = 1;
+        p_the_god_->getSystem<VisionSystem>(ComponentID::VISION).selected_player_ind = 1;
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::H) and !selection.empty()) {
-        for (int sel : selection) {
+
+    //! removed the HOLDING state for now because I may not use it in the end :(
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::H) and !selection.empty())
+    {
+        for (int sel : selection)
+        {
             // world_.move_states_[sel] = MoveState::HOLDING;
         }
-        bc_->addHoldingAgents(selection);
-    } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) and !selection.empty()) {
-        bc_->setStanding(selection);
+        // bc_->addHoldingAgents(selection);
+    }
+    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) and !selection.empty())
+    {
+        p_the_god_->setMoveState(MoveState::STANDING, selection);
     }
 
     mouse_selection.setSize(
         {static_cast<float>(end_position.x - start_position.x), static_cast<float>(end_position.y - start_position.y)});
-
-    for (int i : selection) {
-        if (world_.move_states_[i] == MoveState::MOVING and dist2(world_.r_coords_[i], click_position) < 20) {
-            world_.velocities_[i] = {0, 0};
-            world_.move_states_[i] = MoveState::STANDING;
-        }
-    }
-}
-void Game::update(const float dt, sf::RenderWindow& window) {
-
-    auto& bc_clock = clocks.clock;
-    bc_clock.restart();
-    bc_->updateState(dt, window);
-    // // std::cout << " update state finished \n" << std::flush;
-    clocks.neighbour_searching.addTime(bc_clock.restart().asMicroseconds());
-
-    auto& path_finding_clock = clocks.clock;
-    path_finding_clock.restart();
-    if (!bc_->need_path_update_.empty()) {
-        int n_agents_to_update = bc_->need_path_update_.size();
-        while (!bc_->need_path_update_.empty()) {
-            const auto ind = bc_->need_path_update_.front(); 
-            // pf.updatePathOf(ind, world_.r_coords_[ind], *bc_, bc_->radii_[ind]);
-            pf.issuePaths(*bc_, world_.r_coords_, bc_->radii_, {ind}, bc_->getPathEnd(ind));
-            bc_->need_path_update_.pop();
-        }
-    }
-
-    attack_system_->update(dt);
-
-    for (const auto ind : world_.active_inds) {
-        const auto player_ind = world_.ind2player.at(ind);
-        const auto target_ind = bc_->attack_targets_[ind];
-        std::vector<int> a({ind});
-
-        if (target_ind != -1 and ind != target_ind) {
-            const auto player_of_target_unit = world_.ind2player[target_ind];
-            const auto r = world_.r_coords_[ind];
-            const auto r_target = world_.r_coords_[target_ind];
-            bool in_range = dist(r, r_target) < 10;
-
-            if (in_range and player_ind != player_of_target_unit and world_.move_states_[ind] != MoveState::MOVING) {
-                if (world_.move_states_[ind] == MoveState::STANDING) {
-                    bc_->addHoldingAgents(a);
-                }
-                attack_system_->attack(ind, target_ind);
-                world_.move_states_[ind] = MoveState::HOLDING;
-            }
-        } else {
-            //            if(world_.move_states_[ind] == MoveState::HOLDING){
-            //                bc_->removeFromClusters(a);
-            //                world_.move_states_[ind] = MoveState::STANDING;
-            //            }
-        }
-    }
-
-    auto& to_kill = health_system_->to_kill_;
-    //    std::unordered_set<int> wtf;
-    //    for(const auto a : to_kill){
-    //        wtf.insert(unit2boid(a));
-    //    }
-    //    for(const auto a : to_kill) {
-    //        if(wtf.count(unit2boid(a))>1){
-    //            throw std::runtime_error("");
-    //        }
-    //    }
-    while (!to_kill.empty()) {
-        removeUnit(to_kill.back());
-        to_kill.pop_back();
-    }
-
-    world_.update(dt * 100.f);
-    auto& fow_clock = clocks.clock;
-    p_fow_->update(world_.r_coords_, vision_radii_, world_.active_inds, world_.ind2player);
-    clocks.fog_of_war.addTime(fow_clock.getElapsedTime().asMicroseconds());
-    // std::cout << "fog of war finished \n" << std::flush;
-    const auto fow_time = fow_clock.restart().asMicroseconds();
-
-    pf.updatePaths(world_.r_coords_, *bc_, 5000);
-    clocks.pathfinding.addTime(path_finding_clock.restart().asMilliseconds());
-
-
-    frame_i++;
-    if (frame_i == 100) {
-        frame_i = 0;
-        std::cout << "\n---------- ::CLOCKS:: ----------- \n";
-
-        std::cout << "neighbour search and control took on avg: " << clocks.neighbour_searching.avg_time << " us\n";
-        std::cout << "neighbour search and control took at most: " << clocks.neighbour_searching.max_time << " us\n";
-
-        std::cout << "pathfinding took on avg: " << clocks.pathfinding.avg_time << " us\n";
-        std::cout << "pathfinding took at most: " << clocks.pathfinding.max_time << " us\n";
-
-        std::cout << "fog of war took on avg: " << fow_time << " us\n";
-        std::cout << "fog of war took at most: " << clocks.fog_of_war.max_time << " us\n";
-    }
 }
 
-void drawPath(sf::RenderWindow& window, const std::deque<sf::Vector2f>& path, const std::deque<Edgef>& portals) {
+void Game::update(const float dt, sf::RenderWindow &window)
+{
+
+    p_the_god_->update();
+
+    auto &to_kill = p_the_god_->getSystem<HealthSystem>(ComponentID::HEALTH).dead_entity_inds_;
+    for (auto entity_ind : to_kill)
+    {
+        removeUnit({0, entity_ind});
+        sound_module_.playSound(Sounds::ID::Pop);
+    }
+    to_kill.clear();
+}
+
+void drawPath(sf::RenderWindow &window, const std::deque<sf::Vector2f> &path, const std::deque<Edgef> &portals)
+{
     sf::RectangleShape line;
     line.setFillColor(sf::Color::Cyan);
     sf::CircleShape node;
@@ -489,7 +459,8 @@ void drawPath(sf::RenderWindow& window, const std::deque<sf::Vector2f>& path, co
     sf::RectangleShape portal_line;
     portal_line.setFillColor(sf::Color::Black);
 
-    for (int i = 1; i < path.size(); ++i) {
+    for (int i = 1; i < path.size(); ++i)
+    {
         const auto dr = path.at(i) - path.at(i - 1);
         const auto dr_norm = norm(dr);
         const auto dr2 = portals[i].t;
@@ -511,18 +482,21 @@ void drawPath(sf::RenderWindow& window, const std::deque<sf::Vector2f>& path, co
     }
 }
 
-void drawFunction(const std::vector<sf::Vector2f>& points, sf::RenderWindow& window) {
+void drawFunction(const std::vector<sf::Vector2f> &points, sf::RenderWindow &window)
+{
 
     sf::RectangleShape line;
     line.setFillColor(sf::Color::Black);
 
-    for (int i = 1; i < points.size(); ++i) {
+    for (int i = 1; i < points.size(); ++i)
+    {
         sf::Vector2f p2 = points[i];
         sf::Vector2f p1 = points[i - 1];
         p1.y *= -1;
         p2.y *= -1;
         const sf::Vector2f v = p2 - p1;
-        if (norm2(v) != 0) {
+        if (norm2(v) != 0)
+        {
             auto angle = 180.f / (M_PIf)*std::acos(dot(v / norm(v), {0, 1})) * (2.f * (v.x < 0.f) - 1.f);
             line.setSize({5.0, dist(p1, p2)});
             line.setRotation(angle);
@@ -532,15 +506,19 @@ void drawFunction(const std::vector<sf::Vector2f>& points, sf::RenderWindow& win
     }
 }
 
-void Game::draw(sf::RenderWindow& window) {
-    attack_system_->draw(window);
+void Game::draw(sf::RenderWindow &window)
+{
+    // attack_system_->draw(window);
     p_map_grid->draw(window);
-    world_.draw(window, *bc_);
-    if (selection_pending) {
+    // world_.draw(window, *bc_);
+    if (selection_pending)
+    {
         window.draw(mouse_selection);
     }
 
+    p_the_god_->draw(window);
+
     buildings.draw(window);
-    p_fow_->draw(this->selected_player, window);
+    // p_fow_->draw(this->selected_player, window);
     drawPath(window, path, portals);
 }

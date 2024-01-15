@@ -1,7 +1,3 @@
-//
-// Created by smutekj on 06.08.23.
-//
-
 #include "EdgesFinder1D.h"
 #include "Edges.h"
 #include "Grid.h"

@@ -1,9 +1,11 @@
 #ifndef DEBUGINFO_H
 #define DEBUGINFO_H
 
+
+#include <deque>
+
 #include "core.h"
 #include "Settings.h"
-#include <deque>
 #include "Triangulation.h"
 
 
@@ -71,8 +73,8 @@ class DebugInfo {
 
     DebugInfoSettings2& getSettings() { return settings_; }
 
-    void draw(sf::RenderWindow& window, const float fps_value, const int n_active_boids, const Triangulation& cdt,
-              const Grid& grid, BoidControler& controler);
+    void draw(sf::RenderWindow& window, const float fps_value, const Triangulation& cdt,
+              const Grid& grid);
     void drawFunnel(sf::RenderWindow& window, const std::vector<std::pair<sf::Vector2f, sf::Vector2f>>& funnel);
     void drawPath(sf::RenderWindow& window, const std::deque<sf::Vector2f>& path);
     void drawBoidInfo(sf::RenderWindow& window, const int n_active);
@@ -100,7 +102,7 @@ class DebugInfo {
 
     void drawFPS(sf::RenderWindow& window, const float fps_value);
 
-    void drawBoidControler(sf::RenderWindow& window, const BoidControler& controler);
+    // void drawBoidControler(sf::RenderWindow& window, const BoidControler& controler);
 };
 
 #endif // DEBUGINFO_H

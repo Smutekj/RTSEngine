@@ -53,7 +53,8 @@ std::vector<std::string> separateLine(const std::string& str, std::string delimi
 
 Triangulation::Triangulation(Grid& s_grid)
     : p_grid(&s_grid)
-    , boundary_(s_grid.cell_size_.x * s_grid.n_cells_.x, s_grid.cell_size_.x * s_grid.n_cells_.x) {
+    , boundary_(s_grid.cell_size_.x * s_grid.n_cells_.x, s_grid.cell_size_.x * s_grid.n_cells_.x) 
+{
     cell2triangle_ind_.resize(s_grid.n_cells_.x * s_grid.n_cells_.y, -1);
 }
 Triangulation::Triangulation(Grid& s_grid, DebugInfo& db)
@@ -736,7 +737,7 @@ void Triangulation::insertVertexIntoSpace(const Vertex& new_vertex, TriInd tri_i
     tri_ind2vert_inds_.push_back(tri_ind2vert_inds_[tri_ind]);
     tri_ind2vert_inds_.push_back(tri_ind2vert_inds_[tri_ind]);
 
-    assert(hasGoodOrientation(old_triangle));
+    // assert(hasGoodOrientation(old_triangle));
 
     for (int i = 0; i < 3; ++i) {
         t1_new.is_constrained[i] = false;

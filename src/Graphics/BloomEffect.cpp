@@ -21,14 +21,14 @@ void BloomEffect::apply(const sf::RenderTexture& input, sf::RenderTarget& output
     filterBright(input, mBrightnessTexture);
     mBrightnessTexture.display();
 
-    // downsample(mBrightnessTexture, mFirstPassTextures[0]);
-    // blurMultipass(mFirstPassTextures);
+    downsample(mBrightnessTexture, mFirstPassTextures[0]);
+    blurMultipass(mFirstPassTextures);
 
-    // downsample(mFirstPassTextures[0], mSecondPassTextures[0]);
-    // blurMultipass(mSecondPassTextures);
+    downsample(mFirstPassTextures[0], mSecondPassTextures[0]);
+    blurMultipass(mSecondPassTextures);
 
-    // add(mFirstPassTextures[0], mSecondPassTextures[0], mFirstPassTextures[1]);
-    // mFirstPassTextures[1].display();
+    add(mFirstPassTextures[0], mSecondPassTextures[0], mFirstPassTextures[1]);
+    mFirstPassTextures[1].display();
     add(input, mBrightnessTexture, output);
 }
 

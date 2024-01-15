@@ -52,4 +52,40 @@ struct FogOfWarSettings : Settings {
 
 
 
+struct SeekSystemSettings : Settings {
+    enum Options {
+        COUNT_OPTS,
+    };
+
+    enum Values {
+        FINISH_ANGLE,
+        FINISH_RADIUS,
+        FINISH_N_STEPS,
+        FINISH_CONE_LEN,
+        COUNT_VALS
+    };
+
+    std::array<bool, COUNT_OPTS> options_;
+    std::array<float, COUNT_VALS> values_;
+    std::array<std::string, COUNT_OPTS> option_names_;
+    std::array<std::string, COUNT_VALS> value_names_;
+
+    SeekSystemSettings();
+    ~SeekSystemSettings() = default;
+    virtual void toggleOption(int o) override;
+
+    virtual void setValue(int v, float new_value) override ;
+    virtual float getValue(int v) override;
+
+    bool hasAttribute(Options o) const;
+
+    virtual const std::string& getNameOfOption(int o) const override;
+    virtual const std::string& getNameOfValue(int o) const override;
+
+    virtual const int getCountValues() const override;
+    virtual const int getCountOptions() const override;
+};
+
+
+
 #endif

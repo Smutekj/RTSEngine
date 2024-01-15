@@ -63,6 +63,8 @@
         "thread": "cpp",
         "codecvt": "cpp",
         "iomanip": "cpp",
-        "semaphore": "cpp"
+        "semaphore": "cpp",
+        "typeindex": "cpp",
+        "projectilesystem cpp": "cpp"
     }
 }

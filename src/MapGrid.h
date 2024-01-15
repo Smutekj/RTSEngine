@@ -196,9 +196,12 @@ class MapGrid : public Grid {
     void updateBoundaryTypes();
     void updateBoundaryTypes2();
     void updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_max);
+    void updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_max);
     void extractEdgesFromTiles(Triangulation& cdt);
     void extractEdgesFromTilesV2(Triangulation& cdt);
     void extractVerticesForDrawing(Triangulation& cdt, std::vector<TriInd>& tri_ind2component);
+    void extractVerticesForDrawing2(const Triangulation& cdt, const Edges& edge_lord);
+
 
     void buildWall(sf::Vector2f wall_center, sf::Vector2i square_size);
     void buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation& cdt);
@@ -213,7 +216,58 @@ class MapGrid : public Grid {
                                       sf::Vector2i building_size);
     void drawProposedWalls(sf::Vector2f center, sf::Vector2f max_coords,
                                     std::vector<sf::Vector2f>& function_values, const float width);
+
+    void updateTexture();
+    void createRandomBlob(sf::Vector2i start_coords){
+        
+
+        const int n_max_tiles = 30;
+
+        int i_start = start_coords.x;
+        int j_start = start_coords.y;
+        int i = i_start;
+        int j = j_start;
+        int i_dir = 1;
+        int j_dir = 1;
+        int step = 2;
+        int radius = 6;
+
+
+        const int delta_i_max = 20;
+        const int delta_j_max = 20;
+
+        int n_inserted_tiles = 0;
+        while(n_inserted_tiles != n_max_tiles){
+            const auto cell_index = j* n_cells_.x + i;
+            
+            for(int delta_i = 0; delta_i < radius; delta_i++){
+                for(int delta_j = 0; delta_j < radius; delta_j++){
+                    tiles[cell_index + delta_i + delta_j*n_cells_.x] = TileType::WALL;
+                }
+            }
+
+            n_inserted_tiles++;
+
+            float alpha_i = static_cast<float>(rand()) / RAND_MAX;
+            float alpha_j = static_cast<float>(rand()) / RAND_MAX;
+            
+            i+= (alpha_i < 0.5) * step * i_dir;
+            j+= (2*(alpha_j < 0.1)-1) * step * (j_dir);
+            if(std::abs(i - i_start) > delta_i_max){ i_dir *= -1;}
+            if(std::abs(j - j_start) > delta_j_max){ j_dir *= -1;}
+
+        }
+        updateBoundaryTypes2();
+        sawOffCorners();
+        updateTexture();
+        //! write to texture
+        map_texture.display();
+    }
     void draw(sf::RenderWindow& window);
+
+private:
+    sf::RenderTexture map_texture;
+    sf::RectangleShape map_rect;
 };
 
 #endif // BOIDS_MAPGRID_H

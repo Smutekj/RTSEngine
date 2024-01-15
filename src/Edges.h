@@ -3,15 +3,11 @@
 
 #include "core.h"
 #include <memory>
-//
-// struct EdgeVInd{
-//    int from;
-//    int to;
-//};
+#include "EdgesFinder1D.h"
 
 constexpr static int N_DIRECTIONS = 4;
 
-class EdgesFinder1D;
+// class EdgesFinder1D;
 class Grid;
 
 
@@ -21,7 +17,6 @@ class Edges {
     std::vector<Edgef> edges_;
     std::vector<EdgeVInd> edges2_;
     std::vector<Vertex> vertices_;
-
     std::unique_ptr<Grid> p_grid;
 
     typedef int GridIndex;

@@ -41,6 +41,8 @@ typedef uint16_t u_int_16_t;
 
 constexpr int N_MAX_NAVIGABLE_BOIDS = 4000;
 constexpr int N_MAX_NEIGHBOURS = 500;
+constexpr int  MAX_N_AGENTS_IN_PHYSICS_CELLS = 500;
+
 
 const std::array<sf::Vector2f, 8> t_vectors = {sf::Vector2f{1.f, 0.f}, sf::Vector2f{1.f / M_SQRT2, 1.f / M_SQRT2},
                                                sf::Vector2f{0, 1},     sf::Vector2f{-1 / M_SQRT2, 1 / M_SQRT2},
@@ -169,6 +171,8 @@ inline VectorType calcTriangleCOM(const VectorType& v1, const VectorType& v2, co
     return (v1 + v2 + v3) / 3;
 }
 
+
+
 template <typename VectorType>
 inline float calcTrianglesDistance(VectorType v11, VectorType v12, VectorType v13, VectorType v21, VectorType v22,
                                    VectorType v23) {
@@ -178,6 +182,7 @@ inline float calcTrianglesDistance(VectorType v11, VectorType v12, VectorType v1
 }
 
 inline sf::Vector2f asFloat(const sf::Vector2i& r) { return static_cast<sf::Vector2f>(r); }
+inline sf::Vector2f asFloat(const sf::Vector2<u_int16_t>& r) { return static_cast<sf::Vector2f>(r); }
 //
 // inline sf::Vector2f asFloat(const Vertex& r){
 //    return static_cast<sf::Vector2f> (r);
@@ -288,3 +293,22 @@ template <typename EdgeType> inline sf::Vector2f closestPointOnEdge(const sf::Ve
 
     return point_on_edge;
 }
+
+inline sf::Vector2f randPoint(const float& x_min, const float& x_max, const float& y_min, const float&  y_max){
+    float&& x = static_cast<float>(rand()) / RAND_MAX * (x_max - x_min) + x_min;
+    float&& y = static_cast<float>(rand()) / RAND_MAX * (y_max - y_min) + y_min;
+    return {x, y};
+}
+
+inline sf::Vector2f randPoint(const sf::Vector2f& r_upper_left, const sf::Vector2f& size){
+    return randPoint(r_upper_left.x, r_upper_left.x + size.x, r_upper_left.y, r_upper_left.y + size.y);
+}
+
+
+
+
+enum class MoveState {
+    MOVING,
+    STANDING,
+    HOLDING
+};

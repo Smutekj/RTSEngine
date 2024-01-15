@@ -24,17 +24,26 @@ typedef u_int_32_t TriInd;
 //                  neighbours[0]
 //
 
+enum TriangleType{
+    PASSABLE,
+    IMPASSABLE,
+    YELLOW,
+    GREEN
+};
+
 //! \struct holds data relating to triangle. Ordering is counterclowise (see image)
 struct Triangle {
     //    VertInd vertinds[3];                   //! indices of vertices (we do not hold coordinates here!)
-    Vertex verts[3];                    //! indices of vertices (we do not hold coordinates here!)
+    Vertex verts[3];                    //! vertex coordinates
     ::std::array<TriInd, 3> neighbours;   //! indices of neighbouring triangles
     ::std::array<bool, 3> is_constrained; //! whether corresponding edge is constrained (is this needed here?)
+    TriangleType type;
+
     explicit Triangle() {
         neighbours = {-1u, -1u, -1u};
         is_constrained = {false, false, false};
+        type = PASSABLE;
     }
-
     int countFreeEdges() const { return !is_constrained[0] + !is_constrained[1] + !is_constrained[2]; }
 };
 
@@ -90,6 +99,13 @@ inline bool isInTriangle(const VectorType& r, const Triangle& tri) {
 struct EdgeHash {
     std::size_t operator()(const EdgeVInd& e) const {
         return ::std::hash<VertInd>()(e.from) ^ ::std::hash<VertInd>()(e.to);
+    }
+};
+
+//! \struct function object used to convert pair of integers to a hash (Maybe, I did not really test it :D)
+struct VertexHash {
+    std::size_t operator()(const Vertex& v) const {
+        return ::std::hash<VertInd>()(v.x) ^ ::std::hash<VertInd>()(v.y);
     }
 };
 
@@ -215,4 +231,12 @@ private:
     void dumpToFile(const std::string filename) const;
 };
 
+
+inline sf::Vector2f calcTriangleCOM(const Triangle& tri) {
+    return (asFloat(tri.verts[0]) + asFloat(tri.verts[1]) + asFloat(tri.verts[2]))/3.f;
+}
+
+
 #endif // BOIDS_TRIANGULATION_H
+
+

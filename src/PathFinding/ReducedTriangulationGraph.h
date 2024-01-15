@@ -1,8 +1,9 @@
 #pragma once
 
-#include "core.h"
-#include "Triangulation.h"
 #include <queue>
+
+#include "../core.h"
+#include "../Triangulation.h"
 
 
 struct Portal {
@@ -34,7 +35,7 @@ struct ReducedVertex {
     std::array<int, 3> neighbours = {-1, -1, -1};
 };
 
-//! \class reduced version of full triangulation graph where we store only edges of crossroads triangles as vertices.
+//! \class reduced version of full triangulation graph where we store only edges of crossroad triangles as graph vertices.
 //! \class distances between vertices are calculated using paths from funnel algorithm connecting midpoints of the
 //! \class crossroads edges through triangle corridors. \class triangles with only one uncostrained edge (dead ends) are also
 //! \class  considered vertices;
