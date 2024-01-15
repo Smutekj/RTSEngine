@@ -3,8 +3,7 @@
 
 //! \returns minimal width of a triangle inside a corridor 
 float ReducedTriangulationGraph::calcCorridorWidth(
-    const std::vector<std::pair<sf::Vector2f, sf::Vector2f>>& funnel) const {
-
+    const Funnel& funnel) const {
     if (funnel.size() == 0) {
         return MAXFLOAT;
     }
@@ -34,10 +33,10 @@ float ReducedTriangulationGraph::sign2(const sf::Vector2f& p1, const sf::Vector2
 //! \brief computes path distance within triangles funnel using \p funnel_data  
 //! \param r_start
 //! \param r_end
-//! \param funnel_data
+//! \param funnel
 //! \param cdt Triangulation object (is this really needed here?)
 //! \returns distance of the shortes path within given funnel
-float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, const sf::Vector2f r_end, FunnelData& funnel_data,
+float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, const sf::Vector2f r_end, Funnel& funnel,
                                                 const Triangulation& cdt) const {
 
     std::deque<sf::Vector2f> smoothed_path = {r_start};
@@ -48,12 +47,10 @@ float ReducedTriangulationGraph::funnelDistance(const sf::Vector2f r_start, cons
     sf::Vector2f portal_right = r_start;
     sf::Vector2f portal_left = r_start;
 
-    auto& funnel = funnel_data.funnel;
-
-    volatile int right_index = 0;
-    volatile int left_index = 0;
-    volatile int apex_index = 0;
-    for (volatile int i = 1; i < funnel.size(); ++i) {
+    int right_index = 0;
+    int left_index = 0;
+    int apex_index = 0;
+    for (int i = 1; i < funnel.size(); ++i) {
 
         right = funnel[i].first;
         left = funnel[i].second;
@@ -207,11 +204,11 @@ void ReducedTriangulationGraph::constructFromTriangulation(Triangulation& cdt, s
 
         int n_free = 0;
         Corridor e;
-        FunnelData fd;
+        Funnel funnel;
         const auto left_start = asFloat(entry_tri.verts[next(entry_ind_in_tri)]);
         const auto right_start = asFloat(entry_tri.verts[entry_ind_in_tri]);
         const auto r_start = (right_start + left_start) / 2.f;
-        fd.funnel.push_back({right_start, left_start});
+        funnel.push_back({right_start, left_start});
 
         e.start = {entry_tri_ind, entry_ind_in_tri};
         while (tri_ind_corridor !=
@@ -238,8 +235,8 @@ void ReducedTriangulationGraph::constructFromTriangulation(Triangulation& cdt, s
             prev_tri_ind_corridor = tri_ind_corridor;
             tri_ind_corridor = tri.neighbours[ind_in_tri_corridor];
 
-            fd.funnel.emplace_back(right_vertex_of_portal, left_vertex_of_portal);
-            //                fd.funnel_vertex_inds.emplace_back(right_index, left_index);
+            funnel.emplace_back(right_vertex_of_portal, left_vertex_of_portal);
+            //                funnel_vertex_inds.emplace_back(right_index, left_index);
         }
 
         auto& end_tri_ind = tri_ind_corridor;
@@ -262,13 +259,13 @@ void ReducedTriangulationGraph::constructFromTriangulation(Triangulation& cdt, s
         const auto left_end = asFloat(end_tri.verts[ind_in_tri_from_end]);
         const auto r_end = (right_end + left_end) / 2.f;
 
-        fd.funnel.push_back({right_end, left_end});
-        e.corridor_points = fd.funnel;
-        e.width = calcCorridorWidth(fd.funnel);
+        funnel.push_back({right_end, left_end});
+        e.corridor_points = funnel;
+        e.width = calcCorridorWidth(funnel);
 
-        fd.funnel.front() = {r_start, r_start};
-        fd.funnel.back() = {r_end, r_end};
-        e.length = funnelDistance(r_start, r_end, fd, cdt);
+        funnel.front() = {r_start, r_start};
+        funnel.back() = {r_end, r_end};
+        e.length = funnelDistance(r_start, r_end, funnel, cdt);
 
         vertex2edge_inds2[tri_ind2vertex[end_tri_ind]][ind_in_tri_from_end] = edge_ind;
         vertex2edge_inds2[tri_ind2vertex[entry_tri_ind]][entry_ind_in_tri] = edge_ind;
@@ -394,11 +391,11 @@ void ReducedTriangulationGraph::constructFromTriangulationCenters(Triangulation&
 
         int n_free = 0;
         Corridor e;
-        FunnelData fd;
+        Funnel funnel;
         const auto left_start = asFloat(entry_tri.verts[next(entry_ind_in_tri)]);
         const auto right_start = asFloat(entry_tri.verts[entry_ind_in_tri]);
         const auto r_start = cdt.calcTriangleCenter(entry_tri);
-        fd.funnel.push_back({right_start, left_start});
+        funnel.push_back({right_start, left_start});
 
         e.start = {entry_tri_ind, entry_ind_in_tri};
         while (tri_ind_corridor !=
@@ -425,7 +422,7 @@ void ReducedTriangulationGraph::constructFromTriangulationCenters(Triangulation&
             prev_tri_ind_corridor = tri_ind_corridor;
             tri_ind_corridor = tri.neighbours[ind_in_tri_corridor];
 
-            fd.funnel.emplace_back(right_vertex_of_portal, left_vertex_of_portal);
+            funnel.emplace_back(right_vertex_of_portal, left_vertex_of_portal);
         }
 
         auto& end_tri_ind = tri_ind_corridor;
@@ -446,13 +443,13 @@ void ReducedTriangulationGraph::constructFromTriangulationCenters(Triangulation&
         const auto left_end = asFloat(end_tri.verts[ind_in_tri_from_end]);
         const auto r_end = cdt.calcTriangleCenter(end_tri);
 
-        fd.funnel.push_back({right_end, left_end});
-        //            fd.funnel_vertex_inds.push_back({-1, -1});
-        e.width = calcCorridorWidth(fd.funnel);
-        fd.funnel.front() = {r_start, r_start};
-        fd.funnel.back() = {r_end, r_end};
+        funnel.push_back({right_end, left_end});
+        //            funnel_vertex_inds.push_back({-1, -1});
+        e.width = calcCorridorWidth(funnel);
+        funnel.front() = {r_start, r_start};
+        funnel.back() = {r_end, r_end};
 
-        e.length = funnelDistance(r_start, r_end, fd, cdt);
+        e.length = funnelDistance(r_start, r_end, funnel, cdt);
 
         reduced_vertices[tri_ind2vertex[end_tri_ind]].neighbours[ind_in_tri_from_end] = tri_ind2vertex[entry_tri_ind];
         reduced_vertices[tri_ind2vertex[end_tri_ind]].widths[ind_in_tri_from_end] = e.width;
@@ -473,4 +470,5 @@ void ReducedTriangulationGraph::constructFromTriangulationCenters(Triangulation&
 
         edge_ind++;
     }
+    
 }

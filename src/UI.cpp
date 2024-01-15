@@ -1,6 +1,8 @@
 #include "UI.h"
-#include "FogOfWar.h"
-#include "BoidControler.h"
+
+#include "Systems/VisionSystem.h"
+#include "Systems/SeekSystem.h"
+
 #include "DebugInfo.h"
 #include "Game.h"
 
@@ -254,7 +256,7 @@ void Button2::onKeyPress(const sf::Keyboard::Key& pressed_key){};
     }
 
 
-UI::UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc) {
+UI::UI(Game& game, VisionSystem& fow, DebugInfo& dbg) {
     const std::string font_path{std::filesystem::current_path()};
     if (!font.loadFromFile(font_path + "/../Resources/arial.ttf")) {
         throw std::runtime_error("no font file at " + font_path);
@@ -264,7 +266,7 @@ UI::UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc) {
     auto& dbg_settings = dbg.getSettings();
     typedef DebugInfoSettings2::Options Options;
 
-    auto& bc_settings = bc.getSettings();
+    // auto& bc_settings = bc.getSettings();
 
     sf::Vector2f window_size = {button_size_.x, button_size_.y * 20.f};
     ui_view_.setViewport(sf::FloatRect(0.0f, 0.0f, 0.1f, 1.0f));
@@ -276,10 +278,12 @@ UI::UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc) {
     const sf::Vector2f upper_left_pos3 = {0, 2.0f * button_size_.y};
     const sf::Vector2f upper_left_pos4 = {0, 3.0f * button_size_.y};
 
+    auto& path_settings = game.p_the_god_->getSystem<SeekSystem>(ComponentID::PATHFINDING).settings_;
+
     std::unique_ptr<Widget> popup_window(
         new PopUpWindow<Button2>(upper_left_pos1, button_size_, "Triangulation", font, &dbg_settings));
     std::unique_ptr<Widget> popup_window2(
-        new PopUpWindow<Slider2>(upper_left_pos2, button_size_, "Behaviour", font, &bc_settings));
+        new PopUpWindow<NumberField>(upper_left_pos2, button_size_, "Seek", font, &path_settings));
     std::unique_ptr<Widget> popup_window3(
         new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "Unit Creator", font, &game.uc_settings_));
     std::unique_ptr<Widget> popup_window4(
@@ -298,6 +302,48 @@ UI::UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc) {
     control_panel_boundary_.setFillColor({0, 0, 1, 69});
     control_panel_boundary_.setPosition(ui_view_upper_left);
 }
+
+
+
+// UI::UI(Game& game, VisionSystem& fow, DebugInfo& dbg) {
+//     const std::string font_path{std::filesystem::current_path()};
+//     if (!font.loadFromFile(font_path + "/../Resources/arial.ttf")) {
+//         throw std::runtime_error("no font file at " + font_path);
+//     }
+
+//     sf::Vector2f center;
+//     auto& dbg_settings = dbg.getSettings();
+//     typedef DebugInfoSettings2::Options Options;
+
+
+//     sf::Vector2f window_size = {button_size_.x, button_size_.y * 20.f};
+//     ui_view_.setViewport(sf::FloatRect(0.0f, 0.0f, 0.1f, 1.0f));
+//     ui_view_.setSize(window_size);
+//     ui_view_.setCenter(window_size / 2.f);
+
+//     const sf::Vector2f upper_left_pos1 = {0, 0};
+//     const sf::Vector2f upper_left_pos2 = {0, 1.0f * button_size_.y};
+//     const sf::Vector2f upper_left_pos3 = {0, 2.0f * button_size_.y};
+
+//     std::unique_ptr<Widget> popup_window(
+//         new PopUpWindow<Button2>(upper_left_pos1, button_size_, "Triangulation", font, &dbg_settings));
+//     std::unique_ptr<Widget> popup_window3(
+//         new PopUpWindow<NumberField>(upper_left_pos2, button_size_, "Unit Creator", font, &game.uc_settings_));
+//     std::unique_ptr<Widget> popup_window4(
+//         new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "Fog Of War", font, &fow.settings_));
+    
+//     widgets_.push_back(std::move(popup_window));
+//     widgets_.push_back(std::move(popup_window3));
+//     widgets_.push_back(std::move(popup_window4));
+
+//     const auto ui_view_upper_left = ui_view_.getCenter() - ui_view_.getSize() / 2.0f;
+
+//     control_panel_boundary_.setSize(ui_view_.getSize());
+//     control_panel_boundary_.setOutlineThickness(1);
+//     control_panel_boundary_.setOutlineColor(sf::Color::Black);
+//     control_panel_boundary_.setFillColor({0, 0, 1, 69});
+//     control_panel_boundary_.setPosition(ui_view_upper_left);
+// }
 
 void UI::draw(sf::RenderWindow& window) {
 

@@ -8,7 +8,7 @@ class EdgeVInd;
 class Grid;
 class Triangulation;
 
-class EdgesFinder1D {
+struct EdgesFinder1D {
 
     Orientation dir_ = Orientation::RIGHTLEFT;
     Grid* grid;

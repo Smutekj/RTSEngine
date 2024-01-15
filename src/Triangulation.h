@@ -24,17 +24,26 @@ typedef u_int_32_t TriInd;
 //                  neighbours[0]
 //
 
+enum TriangleType{
+    PASSABLE,
+    IMPASSABLE,
+    YELLOW,
+    GREEN
+};
+
 //! \struct holds data relating to triangle. Ordering is counterclowise (see image)
 struct Triangle {
     //    VertInd vertinds[3];                   //! indices of vertices (we do not hold coordinates here!)
-    Vertex verts[3];                    //! indices of vertices (we do not hold coordinates here!)
+    Vertex verts[3];                    //! vertex coordinates
     ::std::array<TriInd, 3> neighbours;   //! indices of neighbouring triangles
     ::std::array<bool, 3> is_constrained; //! whether corresponding edge is constrained (is this needed here?)
+    TriangleType type;
+
     explicit Triangle() {
         neighbours = {-1u, -1u, -1u};
         is_constrained = {false, false, false};
+        type = PASSABLE;
     }
-
     int countFreeEdges() const { return !is_constrained[0] + !is_constrained[1] + !is_constrained[2]; }
 };
 
@@ -93,6 +102,13 @@ struct EdgeHash {
     }
 };
 
+//! \struct function object used to convert pair of integers to a hash (Maybe, I did not really test it :D)
+struct VertexHash {
+    std::size_t operator()(const Vertex& v) const {
+        return ::std::hash<VertInd>()(v.x) ^ ::std::hash<VertInd>()(v.y);
+    }
+};
+
 //! \struct function object used to convert an edge into a hash
 struct EdgeHash2 {
     std::size_t operator()(const EdgeI& e) const {
@@ -116,22 +132,23 @@ class TriangleFinder {
 class Triangulation {
 
   public:
-    ::std::vector<std::array<VertInd, 3>> tri_ind2vert_inds_;
+    std::vector<std::array<VertInd, 3>> tri_ind2vert_inds_;
 
     std::vector<Vertex> vertices_; //! coordinates of vertices (can be only integers!)
     std::vector<Triangle> triangles_;
 
     std::unordered_set<EdgeI, EdgeHash2> fixed_edges2_;
 
-    Grid* p_grid; //! underlying grid that will be used for finding triangles containing query point
-
     std::vector<TriInd> cell2triangle_ind_;
-    TriInd last_found_tri_ind_ = 0; //! cached index of last found triangle (in a lot of cases new searched triangle is
-                                    //! near previously found one)
-    DebugInfo* dbg; //! for debugging
-    sf::RenderWindow* window;
 
     sf::Vector2f boundary_; //! size of the boundary box
+
+private:
+    TriInd last_found_tri_ind_ = 0; //! cached index of last found triangle (in a lot of cases new searched triangle is
+                                    //! near previously found one)
+    Grid* p_grid; //! underlying grid that will be used for finding triangles containing query point
+
+    DebugInfo* dbg; //! for debugging
 
   public:
     explicit Triangulation(Grid& s_grid);
@@ -214,4 +231,12 @@ class Triangulation {
     void dumpToFile(const std::string filename) const;
 };
 
+
+inline sf::Vector2f calcTriangleCOM(const Triangle& tri) {
+    return (asFloat(tri.verts[0]) + asFloat(tri.verts[1]) + asFloat(tri.verts[2]))/3.f;
+}
+
+
 #endif // BOIDS_TRIANGULATION_H
+
+

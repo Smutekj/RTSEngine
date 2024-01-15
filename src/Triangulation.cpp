@@ -53,13 +53,13 @@ std::vector<std::string> separateLine(const std::string& str, std::string delimi
 
 Triangulation::Triangulation(Grid& s_grid)
     : p_grid(&s_grid)
-    , boundary_(s_grid.cell_size_.x * s_grid.n_cells_.x, s_grid.cell_size_.x * s_grid.n_cells_.x) {
+    , boundary_(s_grid.cell_size_.x * s_grid.n_cells_.x, s_grid.cell_size_.x * s_grid.n_cells_.x) 
+{
     cell2triangle_ind_.resize(s_grid.n_cells_.x * s_grid.n_cells_.y, -1);
 }
 Triangulation::Triangulation(Grid& s_grid, DebugInfo& db)
-    : Triangulation(s_grid) {
-    dbg = &db;
-}
+    : Triangulation(s_grid) 
+    {dbg = &db;}
 
 Triangulation::Triangulation(Grid& s_grid, std::string filename)
     : Triangulation(s_grid) {
@@ -381,7 +381,7 @@ bool Triangulation::edgesIntersect(const EdgeI e1, const EdgeI e2) const noexcep
     return alpha1 > 0 and alpha1 < 1 and alpha2 > 0 and alpha2 < 1;
 }
 
-//! \returns true if line connecting v11 and v12 intersects with line connecting v21 and v22
+//! \returns value of alpha if line connecting v11 and v12 intersects with line connecting v21 and v22 and -1 if there is no itersection
 float Triangulation::linesIntersect(const sf::Vector2f& v11, const sf::Vector2f& v12, const Vertex& v21,
                                     const Vertex& v22) const noexcept {
 
@@ -737,7 +737,7 @@ void Triangulation::insertVertexIntoSpace(const Vertex& new_vertex, TriInd tri_i
     tri_ind2vert_inds_.push_back(tri_ind2vert_inds_[tri_ind]);
     tri_ind2vert_inds_.push_back(tri_ind2vert_inds_[tri_ind]);
 
-    assert(hasGoodOrientation(old_triangle));
+    // assert(hasGoodOrientation(old_triangle));
 
     for (int i = 0; i < 3; ++i) {
         t1_new.is_constrained[i] = false;

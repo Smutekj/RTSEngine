@@ -4,11 +4,10 @@
 #include <filesystem>
 #include "core.h"
 #include "Settings.h"
+#include "Systems/VisionSystem.h"
 
 class Game;
 class DebugInfo;
-class FogOfWarV2;
-class BoidControler;
 
 class ClickableBox {
 
@@ -262,6 +261,7 @@ template <class WidgetType> class PopUpWindow : public Widget {
     }
 };
 
+
 class UI {
 
     sf::Vector2f mouse_coords_on_click_;
@@ -275,7 +275,7 @@ class UI {
     sf::View ui_view_;
 
   public:
-    UI(Game& game, FogOfWarV2& fow, DebugInfo& dbg, BoidControler& bc);
+    UI(Game& game, VisionSystem& fow, DebugInfo& dbg);
 
     void draw(sf::RenderWindow& window);
 

@@ -75,6 +75,7 @@ sf::Vector2i Grid::cellCoords(const sf::Vector2i r_coord) const {
     return cellCoords(static_cast<sf::Vector2f>(r_coord)); 
 }
 
+
 //! \param cell_coords 2D cell coordinates
 //! \returns true if point is within grid bounds
 bool SearchGrid::isInGrid(sf::Vector2i cell_coords) const {
