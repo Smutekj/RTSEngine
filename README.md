@@ -24,4 +24,7 @@ Pathfinding is done in three steps:
  4.  
 By doing **A*** only on "crossroads". (This significantly reduces the number of triangles that A* needs to go through)
 
+# Demonstration: Single agent pathfinding:
+
+![](https://github.com/Smutekj/RTSEngine/Videos/PathFinding-Single.gif)
 
