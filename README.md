@@ -26,6 +26,5 @@ By doing **A*** only on "crossroads". (This significantly reduces the number of 
 
 # Demonstration: Single agent pathfinding:
 
-![](https://github.com/Smutekj/RTSEngine/PathFinding-Single2.gif)
-
+![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Single2.gif)
 
