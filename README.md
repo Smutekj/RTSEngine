@@ -10,8 +10,9 @@ So far we can add buildings very fast, but removal is still slow because the ent
 
 # Reduced Triangulation 
 is a graph created from the CDT where the mesh is abstracted into "crossroads" and "corridords" (and "dead ends" but they are not important really...). 
-"Crossroad" is a triangle which has 3 uncostrained (= not being next to a wall) edges. 
-"Corridor" is a collection of connected triangles each having exactly 2 unconstrained edges connecting 2 "Crossroads"
+
+ - "Crossroad" is a triangle which has 3 uncostrained (= not being next to a wall) edges. 
+ - "Corridor" is a collection of connected triangles each having exactly 2 unconstrained edges connecting 2 "Crossroads"
 
 # PathFinding - A* 
 
