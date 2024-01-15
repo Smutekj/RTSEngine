@@ -16,6 +16,12 @@ is a graph created from the CDT where the mesh is abstracted into "crossroads" a
 
 # PathFinding - A* 
 
-Pathfinding then finds a path represented by connected triangles from start to end triangle
-by doing **A*** only on "crossroads". (This significantly reduces the number of triangles that A* needs to go through)
+Pathfinding is done in three steps:
+
+ 1.  A collection of connected triangles from start to end triangle is found using A* on the Reduced triangulation graph. Union of these triangles is a single polygon containing the desired path (called Funnel).
+ 2.  A Funnel points is extracted from the triangle-path
+ 3.  The actual path (a bunch of straight lines) is obtained from Funnel via the Funnel algorithm (nice explanation here: http://ahamnett.blogspot.com/2012/10/funnel-algorithm.html)
+ 4.  
+By doing **A*** only on "crossroads". (This significantly reduces the number of triangles that A* needs to go through)
+
 
