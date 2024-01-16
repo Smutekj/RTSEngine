@@ -34,3 +34,6 @@ By doing **A*** only on "crossroads" we significantly reduce the number of trian
 
 ![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Groups.gif)
 
+# Agents Equations of Motion: Boids
+
+ The Equations of motions governing the agents is closely based on the concept of Boids by Reynolds. (original article: https://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/ , nice explanation: https://cs.stanford.edu/people/eroberts/courses/soco/projects/2008-09/modeling-natural-systems/boids.html )
