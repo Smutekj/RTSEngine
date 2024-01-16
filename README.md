@@ -27,8 +27,9 @@ Pathfinding is done in three steps:
 By doing **A*** only on "crossroads" we significantly reduce the number of triangles that A* needs to go through.
 
 # Demonstration: Single agent pathfinding:
+Purple polygon is the funnel path is light blue and portals are black.
 
-![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Single2.gif)
+![](https://github.com/Smutekj/RTSEngine/blob/main/PathFinding-Single.gif)
 
 # Demonstration: Multiple agents pathfinding with fog of war:
 
