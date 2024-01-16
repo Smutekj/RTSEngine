@@ -23,6 +23,7 @@ Pathfinding is done in three steps:
  3.  The actual path (a bunch of straight lines) is obtained from Funnel via the Funnel algorithm (nice explanation here: http://ahamnett.blogspot.com/2012/10/funnel-algorithm.html)
  4.  ???
  5.  Profit
+
 By doing **A*** only on "crossroads" we significantly reduce the number of triangles that A* needs to go through.
 
 # Demonstration: Single agent pathfinding:
