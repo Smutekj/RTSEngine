@@ -162,7 +162,7 @@ private:
     TriInd findTriangle(Vertex query_point, bool start_from_last_found = false);
     TriInd findTriangle(sf::Vector2f query_point, bool start_from_last_found = false);
 
-    void createBoundaryAndSuperTriangle();
+    void createBoundaryAndSuperTriangle(const sf::Vector2i boundary =  {Geometry::BOX[0], Geometry::BOX[1]});
 
     bool edgesIntersect(const EdgeVInd e1, const EdgeVInd e2) const noexcept;
     bool edgesIntersect(const EdgeI e1, const EdgeI e2) const noexcept;

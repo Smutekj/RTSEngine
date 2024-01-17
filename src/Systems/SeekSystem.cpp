@@ -17,16 +17,16 @@ void SeekSystem::issuePaths(std::vector<int> &entity_inds, sf::Vector2f path_end
     for (const auto e_ind : entity_inds)
     {
         const auto compvec_ind = entity2compvec_ind_.at(e_ind);
-        if(compvec_ind == -1){//! already removed
+        if (compvec_ind == -1)
+        { //! already removed
             continue;
-        } 
+        }
         compvec_inds.push_back(compvec_ind);
         components.at(compvec_ind).path_end = path_end;
-        components.at(compvec_ind).transform.angle_vel = components.at(compvec_ind).turn_rate; 
+        components.at(compvec_ind).transform.angle_vel = components.at(compvec_ind).turn_rate;
     }
     commander_groups_.addGroup(compvec_inds);
     p_pathfinder_->issuePaths2(components, entity_inds, entity2compvec_ind_, path_end);
-
 }
 
 void SeekSystem::update()
@@ -35,11 +35,12 @@ void SeekSystem::update()
     p_ns_->update(components);
 
     //! remove death agents ... (this should be done somewhere else i guess?)
-    auto& groups = p_pathfinder_->to_update_groups_;
-    for(auto& group_data : groups){
-        for(const auto ind : group_data.inds_to_update){
-
-        }     
+    auto &groups = p_pathfinder_->to_update_groups_;
+    for (auto &group_data : groups)
+    {
+        for (const auto ind : group_data.inds_to_update)
+        {
+        }
     }
 
     p_pathfinder_->updatePaths(components, 5000);
@@ -56,11 +57,11 @@ void SeekSystem::update()
             const auto &path_end = comp.path_end;
             auto dr_to_target = move_target - r;
             const auto desired_angle = s_angle_calculator.angle(dr_to_target);
-            
+
             turnTowards(comp, dr_to_target);
 
             float norm_dr = norm(dr_to_target);
-            if (norm_dr > comp.radius && comp.transform.angle_vel == 0 )
+            if (norm_dr > comp.radius && comp.transform.angle_vel == 0)
             {
                 comp.transform.vel = dr_to_target / norm_dr * comp.max_speed;
             }
@@ -77,7 +78,6 @@ void SeekSystem::update()
         }
         else
         {
-            
         }
         compvec_ind++;
     }
@@ -96,14 +96,15 @@ void SeekSystem::update()
     {
         std::vector<int> entity_ind = {compvec_ind2entity_ind_.at(comp_inds_to_update_.front())};
         p_pathfinder_->issuePaths2(components, entity_ind, entity2compvec_ind_,
-                                     components.at(comp_inds_to_update_.back()).path_end);
+                                   components.at(comp_inds_to_update_.back()).path_end);
         comp_inds_to_update_.pop();
     }
 }
 
 void SeekSystem::draw(sf::RenderTarget &window)
 {
-    for(int i = 0; i < N_MAX_THREADS; ++i){
+    for (int i = 0; i < N_MAX_THREADS; ++i)
+    {
         const auto &path = p_pathfinder_->pap[i].path;
         const auto &portals = p_pathfinder_->pap[i].portals;
         sf::RectangleShape line;
@@ -134,18 +135,25 @@ void SeekSystem::draw(sf::RenderTarget &window)
 
             node.setPosition(path.at(i) - sf::Vector2f{1.f, 1.f});
 
-            window.draw(portal_line);
-            window.draw(line);
-            window.draw(node);
+            if (settings_.options_.at(SeekSystemSettings::Options::SHOW_PORTALS))
+            {
+                window.draw(portal_line);
+            }
+            if (settings_.options_.at(SeekSystemSettings::Options::SHOW_PATH))
+            {
+                window.draw(line);
+                window.draw(node);
+            }
         }
     }
 
     //! draw funnels
-    for(int i = 0; i < N_MAX_THREADS; ++i){
+    for (int i = 0; i < N_MAX_THREADS; ++i)
+    {
         const auto &funnel = p_pathfinder_->funnels[i];
         sf::RectangleShape line_l;
         sf::RectangleShape line_r;
-        
+
         auto color = sf::Color::Magenta;
         line_l.setFillColor(color);
         line_r.setFillColor(color);
@@ -153,26 +161,28 @@ void SeekSystem::draw(sf::RenderTarget &window)
         node.setRadius(1.f);
         node.setFillColor(sf::Color::Black);
 
-
-        for (int i = 1; i < funnel.size(); ++i)
+        if (settings_.options_.at(SeekSystemSettings::Options::SHOW_FUNNEL))
         {
-            const auto dr_l = funnel.at(i).first - funnel.at(i - 1).first;
-            const auto dr_r = funnel.at(i).second - funnel.at(i - 1).second;
-            const auto drl_norm = norm(dr_l);
-            const auto drr_norm = norm(dr_r);
-            const auto angle_l = 180.f / (M_PIf)*std::acos(dot(dr_l / drl_norm, {0, 1})) * (2.f * (dr_l.x < 0.f) - 1.f);
-            const auto angle_r = 180.f / (M_PIf)*std::acos(dot(dr_r / drr_norm, {0, 1})) * (2.f * (dr_r.x < 0.f) - 1.f);
-            line_l.setPosition(funnel.at(i - 1).first);
-            line_l.setSize({1, drl_norm});
-            line_l.setRotation(angle_l);
+            for (int i = 1; i < funnel.size(); ++i)
+            {
+                const auto dr_l = funnel.at(i).first - funnel.at(i - 1).first;
+                const auto dr_r = funnel.at(i).second - funnel.at(i - 1).second;
+                const auto drl_norm = norm(dr_l);
+                const auto drr_norm = norm(dr_r);
+                const auto angle_l = 180.f / (M_PIf)*std::acos(dot(dr_l / drl_norm, {0, 1})) * (2.f * (dr_l.x < 0.f) - 1.f);
+                const auto angle_r = 180.f / (M_PIf)*std::acos(dot(dr_r / drr_norm, {0, 1})) * (2.f * (dr_r.x < 0.f) - 1.f);
+                line_l.setPosition(funnel.at(i - 1).first);
+                line_l.setSize({1, drl_norm});
+                line_l.setRotation(angle_l);
 
-            line_r.setPosition(funnel.at(i - 1).second);
-            line_r.setSize({1, drr_norm});
-            line_r.setRotation(angle_r);
+                line_r.setPosition(funnel.at(i - 1).second);
+                line_r.setSize({1, drr_norm});
+                line_r.setRotation(angle_r);
 
-            window.draw(line_l);
-            window.draw(line_r);
-            window.draw(node);
+                window.draw(line_l);
+                window.draw(line_r);
+                window.draw(node);
+            }
         }
     }
 }
@@ -341,15 +351,14 @@ void SeekSystem::updateTarget(PathFinderComponent &comp, const sf::Vector2f r)
     if (next_move_target != path_end)
     {
         comp.needs_update = true;
-        
+
         PathData pd;
-        pd.start_tri_ind =  p_cdt_->findTriangle(comp.transform.r, false);
+        pd.start_tri_ind = p_cdt_->findTriangle(comp.transform.r, false);
         pd.r_end = comp.path_end;
         components2update_.push(pd);
         comp_inds_to_update_.push(compvecInd(comp));
     }
 }
-
 
 void SeekSystem::updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &new_data, const std::vector<Entity> &active_entity_inds)
 {
@@ -361,7 +370,6 @@ void SeekSystem::updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &
         comps.at(compvec_ind).state = new_data.at(ent.ind).state;
     }
 }
-
 
 void SeekSystem::communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shared_data) const
 {
@@ -380,47 +388,45 @@ void SeekSystem::communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shar
     }
 }
 
-    void SeekSystem::turnTowards(PathFinderComponent &comp, sf::Vector2f direction)
+void SeekSystem::turnTowards(PathFinderComponent &comp, sf::Vector2f direction)
+{
+    float norm_dr = norm(direction);
+    float desired_angle;
+    repairAngleBounds(comp);
+
+    if (norm2(direction) == 0)
     {
-        float norm_dr = norm(direction);
-        float desired_angle;
-        repairAngleBounds(comp);
-
-        if (norm2(direction) == 0)
-        {
-            desired_angle = comp.desired_angle;
-        }
-        else
-        {
-            desired_angle = s_angle_calculator.angle(direction);
-        }
-        auto d_angle = desired_angle - comp.transform.angle;
-        d_angle > 180 ? d_angle = -360 + d_angle : d_angle = d_angle;
-        d_angle < -180 ? d_angle = 360 + d_angle : d_angle = d_angle;
-        comp.transform.angle_vel = std::min({comp.turn_rate, d_angle});
-        if (d_angle < 0)
-        {
-            comp.transform.angle_vel = std::max({-comp.turn_rate, d_angle});
-        }
-        if(std::abs(d_angle) < comp.turn_rate){ //! we can turn to desired angle in this frame
-            comp.transform.angle = desired_angle;
-            comp.transform.angle_vel = 0;
-        }
-        repairAngleBounds(comp);
-
+        desired_angle = comp.desired_angle;
     }
-
-    void SeekSystem::repairAngleBounds(PathFinderComponent& comp)
+    else
     {
-
-        if (comp.transform.angle > 180)
-        {
-            comp.transform.angle -= 360;
-        }
-        if (comp.transform.angle < -180)
-        {
-            comp.transform.angle += 360;
-        }
-        
+        desired_angle = s_angle_calculator.angle(direction);
     }
+    auto d_angle = desired_angle - comp.transform.angle;
+    d_angle > 180 ? d_angle = -360 + d_angle : d_angle = d_angle;
+    d_angle < -180 ? d_angle = 360 + d_angle : d_angle = d_angle;
+    comp.transform.angle_vel = std::min({comp.turn_rate, d_angle});
+    if (d_angle < 0)
+    {
+        comp.transform.angle_vel = std::max({-comp.turn_rate, d_angle});
+    }
+    if (std::abs(d_angle) < comp.turn_rate)
+    { //! we can turn to desired angle in this frame
+        comp.transform.angle = desired_angle;
+        comp.transform.angle_vel = 0;
+    }
+    repairAngleBounds(comp);
+}
 
+void SeekSystem::repairAngleBounds(PathFinderComponent &comp)
+{
+
+    if (comp.transform.angle > 180)
+    {
+        comp.transform.angle -= 360;
+    }
+    if (comp.transform.angle < -180)
+    {
+        comp.transform.angle += 360;
+    }
+}

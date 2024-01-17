@@ -7,7 +7,6 @@
 
 #include "Grid.h"
 
-
 void NeighbourSearcherStrategyPhysics::execute(const std::vector<PhysicsComponent> &comps,
                                                const std::vector<std::array<ComponentAndInd<PhysicsComponent>, MAX_N_AGENTS_IN_PHYSICS_CELLS + 1>> &cell2comp_and_comp_ind,
                                                std::vector<std::array<InteractionData, N_MAX_NEIGHBOURS>> &component2neighbour_data,
@@ -68,7 +67,6 @@ void NeighbourSearcherStrategyPhysics::execute(const std::vector<PhysicsComponen
     }
 }
 
-
 void NeighbourSearcherStrategySeek::execute(
     const std::vector<PathFinderComponent> &comps,
     const std::vector<std::array<ComponentAndInd<PathFinderComponent>, MAX_N_AGENTS_IN_PHYSICS_CELLS + 1>> &cell2comp_and_comp_ind,
@@ -108,7 +106,7 @@ void NeighbourSearcherStrategySeek::execute(
                 {
                     auto &[comp_j, comp_ind_j] = cell_data_j[j];
                     const auto dr = comp_j.transform.r - r;
-                    const auto r_max_sq_of_comp = 10.f*(comp.radius + comp_j.radius)*(comp.radius + comp_j.radius);
+                    const auto r_max_sq_of_comp = 10.f * (comp.radius + comp_j.radius) * (comp.radius + comp_j.radius);
                     if (norm2(dr) < r_max_sq_of_comp && comp_ind != comp_ind_j)
                     {
                         component2neighbour_data[comp_ind][last_neighbour_ind] = comp_ind_j;
@@ -125,11 +123,11 @@ void NeighbourSearcherStrategySeek::execute(
 }
 
 void NeighbourSearcherStrategyAttack::execute(const std::vector<AttackComponent> &comps,
-                    const std::vector<std::array<ComponentAndInd<AttackComponent>, 500 + 1>> &cell2comp_and_comp_ind,
-                    std::vector<std::array<int, N_MAX_NEIGHBOURS>> &component2neighbour_data,
-                    const SearchGrid &search_grid,
-                    std::vector<int>& component2last_neigbhour_index, float r_max2) 
-                    {
+                                              const std::vector<std::array<ComponentAndInd<AttackComponent>, 500 + 1>> &cell2comp_and_comp_ind,
+                                              std::vector<std::array<int, N_MAX_NEIGHBOURS>> &component2neighbour_data,
+                                              const SearchGrid &search_grid,
+                                              std::vector<int> &component2last_neigbhour_index, float r_max2)
+{
     std::vector<std::array<int, 9>> thread_id2nearest_cells(NUM_OMP_NS_THREADS);
     const auto n_comps = comps.size();
 
@@ -176,8 +174,10 @@ void NeighbourSearcherStrategyAttack::execute(const std::vector<AttackComponent>
             }
         }
     }
-    }
+}
 
 template class INeighbourSearcherStrategy<AttackComponent, int>;
 template class INeighbourSearcherStrategy<PathFinderComponent, int>;
 template class INeighbourSearcherStrategy<PhysicsComponent, InteractionData>;
+
+

@@ -38,15 +38,12 @@ MapGrid::MapGrid(sf::Vector2i n_cells, sf::Vector2f box_size, sf::Vector2f cell_
     wall_rect.setPoint(3, {0, dy});
     wall_rect.setFillColor(sf::Color::Blue);
     // wall_rect.setTexture(&grass);
-    map_texture.draw(wall_rect);
-    wall_rect.setPosition(100, 100);
-    map_texture.draw(wall_rect);
 
     dl_triangle.setPointCount(3);
     dl_triangle.setPoint(0, {0, 0});
     dl_triangle.setPoint(1, {dx, 0});
     dl_triangle.setPoint(2, {dx, dy});
-    dl_triangle.setFillColor(sf::Color::Green);
+    dl_triangle.setFillColor(sf::Color::Red);
     // dl_triangle.setTexture(&grass);
 
     dr_triangle.setPointCount(3);
@@ -420,11 +417,6 @@ void MapGrid::updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_m
                 wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
                 wall_rect.setFillColor(sf::Color::Red);
                 wall_rect.setScale({5, 5});
-
-                sf::RectangleShape rect;
-                rect.setFillColor(sf::Color::Green);
-                rect.setPosition(150, 300);
-                rect.setSize({5, 5});
                 walls_drawable_.push_back(wall_rect);
                 // map_texture.draw(wall_rect); // or any other drawable
             }

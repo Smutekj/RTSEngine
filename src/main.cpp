@@ -19,7 +19,7 @@ int main() {
 
     sf::ContextSettings settings;
 
-    sf::RenderWindow window(sf::VideoMode(RES_X, RES_Y), "", sf::Style::Default, settings); //, sf::Style::Fullscreen
+    sf::RenderWindow window(sf::VideoMode(RES_X, RES_Y), "",  sf::Style::Fullscreen, settings); //,
     window.setFramerateLimit(FRAME_RATE);
 
     sf::Vector2f box_size = {static_cast<float>(BOX[0]), static_cast<float>(BOX[1])};
@@ -49,7 +49,7 @@ int main() {
     UI ui(game, (game.p_the_god_->getSystem<VisionSystem>(ComponentID::VISION)), dbg);
 
     //! generate random positions in circles around the map (used for testing only)
-    generateRandomPositionsInCircles(0.01f, box_size, 500, game);
+    generateRandomPositionsInCircles(0.01f, box_size, 100, game);
 
     int frame_i = 0;
     unsigned long long time_of_n_frames = 0;
@@ -69,7 +69,6 @@ int main() {
         dbg.draw(window, real_fps, *p_cdt, *game.p_map_grid);
         ui.draw(window);
         const auto drawing_time = drawing_clock.restart().asMicroseconds();
-
         time_of_n_frames += frame_clock.getElapsedTime().asMicroseconds();
         if (frame_i++ == fps_calc_period) {
             real_fps = static_cast<float>(fps_calc_period) / time_of_n_frames * 1e6f;

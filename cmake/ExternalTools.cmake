@@ -35,11 +35,26 @@ endif()
 include_directories(${SFML_INCLUDE_DIRS})
 include_directories(SYSTEM ${sfml_SOURCE_DIR}/include)
 
-find_package(OpenMP REQUIRED)
 
+find_package(OpenMP REQUIRED)
 # FetchContent_GetProperties(OpenMP)
 if(OpenMP_CXX_FOUND)
   message("OpenMP found and will use it!")
+else()
+  message(FATAL_ERROR, "Doesn't work without OpenMP (I kind of assumed everyone had it), will be fixed in later version! (probably)")
 endif()
 
-# FetchContent_GetProperties(OpenMP)
+
+
+##########
+# GOOGLE TEST
+##########
+include(FetchContent)
+FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)

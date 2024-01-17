@@ -11,6 +11,22 @@
 
 void GraphicsSystem::update()
 {
+    std::vector<int> spawner_ids_to_remove;
+    for(auto& [ps_id, ps] : point_spawners_){ 
+        ps->update();
+        if(ps->spawner_life_time <= 0){
+            spawner_ids_to_remove.push_back(ps_id);
+        }
+    }
+
+    while(!spawner_ids_to_remove.empty()){
+        auto id = spawner_ids_to_remove.back();
+        point_spawners_.erase(id);
+        spawner_ids_to_remove.pop_back();
+    }
+
+
+
     auto &components = static_cast<CompArray &>(*p_comps_).components_;
     for (auto &comp : components)
     {
@@ -35,6 +51,8 @@ void GraphicsSystem::addOnGrid()
 
 void GraphicsSystem::draw(sf::RenderTarget &target)
 {
+
+    for(auto& [ps_id, p_ps] : point_spawners_){ p_ps->draw(target); }
 
     const auto &components = static_cast<CompArray &>(*p_comps_).components_;
 
