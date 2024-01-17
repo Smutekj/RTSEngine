@@ -6,7 +6,7 @@ Works on LINUX. Will work on Windows once I finish everything.
 
 # Constrained Delaunay Triangulation (CDT)
 is an algorithm for creating triangulated meshes with edges between specified vertices. Implementation is not yet very optimized and is based closely on: https://doi.org/10.1016/0141-1195(87)90043-X . 
-So far we can add buildings very fast, but removal is still slow because the entire mesh is reconstructed from scratch.
+So far we can add buildings very fast, but removal is still slow because the entire mesh is reconstructed from scratch. If it turns out to be too hard to remove dynamically buildings without constructing them, I will just make the building destruction animations slow and dramatic so that there is enough time to create new mesh. Another advantage of ignoring fast removal is the fact that I can put more data in a triangle 
 
 # Reduced Triangulation 
 is a graph created from the CDT where the mesh is abstracted into "crossroads" and "corridords" (and "dead ends" but they are not important really...). 
