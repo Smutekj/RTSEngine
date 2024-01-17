@@ -15,6 +15,7 @@
 #include "Systems/PhysicsSystem.h"
 #include "Systems/HealthSystem.h"
 #include "Systems/AttackSystem.h"
+#include "Systems/GraphicsSystem.h"
 
 void Game::updateTriangulation()
 {
@@ -237,6 +238,13 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
                 selection_pending = false;
                 const auto previous_selection = selection;
                 selectInRectangle(*p_the_god_, start_position, end_position, selection, selected_player);
+            }
+            if (event.mouseButton.button == sf::Mouse::Right)
+            {
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::F))
+                {
+                    p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS).createSpawner(mouse_position);
+                }
             }
         }
         if (event.type == sf::Event::MouseWheelMoved)
@@ -476,9 +484,9 @@ void drawPath(sf::RenderWindow &window, const std::deque<sf::Vector2f> &path, co
 
         node.setPosition(path.at(i) - sf::Vector2f{1.f, 1.f});
 
-        window.draw(portal_line);
-        window.draw(line);
-        window.draw(node);
+        // window.draw(portal_line);
+        // window.draw(line);
+        // window.draw(node);
     }
 }
 

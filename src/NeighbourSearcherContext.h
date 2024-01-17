@@ -53,16 +53,17 @@ public:
         const auto cell_ind = s_grid_->coordToCell(r);
         const auto cell_coords = s_grid_->cellCoords(cell_ind);
 
-        int j_max = cell_coords.y + std::ceil(r_max / s_grid_->cell_size_.y);
-        int j_min = cell_coords.y - std::ceil(r_max / s_grid_->cell_size_.y);
+        int j_max = cell_coords.y + std::ceil(r_max / s_grid_->cell_size_.y)+1;
+        int j_min = cell_coords.y - std::ceil(r_max / s_grid_->cell_size_.y)-1;
         j_max = std::min(j_max, s_grid_->n_cells_.y - 1);
         j_min = std::max(j_min, 0);
+        const auto delta_j_max = j_max - j_min;
 
         for (int j = j_min; j <= j_max; ++j)
         {
             const float dy = (j - cell_coords.y) * s_grid_->cell_size_.y;
-            int i_max = cell_coords.x + std::ceil(std::sqrt(r_max2 - dy * dy));
-            int i_min = cell_coords.x - (i_max - cell_coords.x);
+            int i_max = cell_coords.x + delta_j_max;
+            int i_min = cell_coords.x - delta_j_max;
             i_max = std::min(i_max, s_grid_->n_cells_.x - 1);
             i_min = std::max(i_min, 0);
 

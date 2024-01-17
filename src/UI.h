@@ -55,14 +55,10 @@ class Slider2 : public Widget {
     ~Slider2() = default;
 
     virtual void onRelease(sf::RenderWindow& window) override;
-
     virtual void onKeyRelease() override;
     virtual void onKeyPress(const sf::Keyboard::Key& pressed_key) override;
-
     virtual void onClick(sf::RenderWindow& window) override;
-
     virtual void draw(sf::RenderWindow& window) override ;
-
     virtual void onMouseButtonHold(sf::RenderWindow& window) override;
 };
 
@@ -79,7 +75,6 @@ class Button2 : public Widget {
     virtual void draw(sf::RenderWindow& window) override;
     virtual void onClick(sf::RenderWindow& window) override;
     virtual void onRelease(sf::RenderWindow& window) override;
-
     virtual void onMouseButtonHold(sf::RenderWindow& window) override;
     virtual void onKeyRelease() override;
     virtual void onKeyPress(const sf::Keyboard::Key& pressed_key) override;
@@ -202,6 +197,8 @@ template <class WidgetType> class PopUpWindow : public Widget {
                 for (auto& widget : widgets_) {
                     widget->onClick(window);
                 }
+            }else{
+                is_opened = false;
             }
             window.setView(old_view);
         }

@@ -786,7 +786,7 @@ void PathFinder2::findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r
 //! \param r_end end position
 //! \param radius to block paths that are too narrow
 //! \param funnel stores data used to create real path going through the triangles
-//! \param thread_id which thread runs the job?
+//! \param thread_id which thread runs the job
 void PathFinder2::findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r_end, float radius, Funnel &funnel,
                                             const int thread_id)
 {
@@ -1438,7 +1438,7 @@ Edgef pushAwayFromCorner2(sf::Vector2f &r_to_push, const sf::Vector2f &r_prev, c
 //! \param r_next
 //! \param distance how far away the point is pushed
 //! \returns path portal coming from pushed
-Edgef createPortal(const sf::Vector2f &r_to_push, const sf::Vector2f &r_prev, const sf::Vector2f &r_next, const float distance, bool left)
+Edgef createPortal(sf::Vector2f &r_to_push, const sf::Vector2f &r_prev, const sf::Vector2f &r_next, const float distance, bool left)
 {
 
     const auto v0 = r_to_push;
@@ -1454,6 +1454,7 @@ Edgef createPortal(const sf::Vector2f &r_to_push, const sf::Vector2f &r_prev, co
 
     Edgef p;
     p.from = r_to_push + vertex_normal * distance;
+    r_to_push += vertex_normal * distance;
     p.t = vertex_normal;
     p.l = 10 * distance; //!
     return p;
@@ -1650,11 +1651,6 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
     int i_first_same = 0;
     bool is_first = true;
 
-    struct VertexNeighbourData
-    {
-        Vertex prev;
-        Vertex next;
-    };
 
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_left;
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_right;
@@ -1701,7 +1697,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
 
         for (int j = unique_left[i]; j < unique_left[i + 1]; ++j)
         {
-            const auto &mid_left = funnel[j].second;
+            auto &mid_left = funnel[j].second;
             const auto left_portal = createPortal(mid_left, prev_left, next_left, push_distance, false);
             left_portals.push_back(left_portal);
         }
@@ -1726,7 +1722,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
 
         for (int j = unique_right[i]; j < unique_right[i + 1]; ++j)
         {
-            const auto &mid_right = funnel[j].first;
+            auto &mid_right = funnel[j].first;
             const auto right_portal = createPortal(mid_right, prev_right, next_right, push_distance, true);
             right_portals.push_back(right_portal);
         }
@@ -1793,7 +1789,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
                 portals.push_back(right_portals[right_index]);
 
                 auto v_port_r = static_cast<Vertex>(portal_right);
-                if (vertex2normal_left.count(v_port_r) > 0)
+                if (vertex2normal_right.count(v_port_r) > 0)
                 {
                     portal_right += radius * vertex2normal_right.at(v_port_r);
                 }

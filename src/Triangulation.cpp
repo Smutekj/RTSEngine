@@ -260,9 +260,8 @@ TriInd Triangulation::findTriangle(sf::Vector2f query_point, bool from_last_foun
 //! \brief creates supertriangle which contains specified boundary then
 //!        inserts 4 vertices corresponding to the boundary (upper left point is [0,0])
 //! \param boundary dimensions of a boundary contained in supertriangle
-void Triangulation::createBoundaryAndSuperTriangle() {
+void Triangulation::createBoundaryAndSuperTriangle(const sf::Vector2i boundary) {
 
-    const sf::Vector2i boundary = {Geometry::BOX[0], Geometry::BOX[1]};
     Triangle super_triangle;
     tri_ind2vert_inds_.push_back({0, 1, 2});
 
@@ -308,7 +307,6 @@ void Triangulation::createBoundaryAndSuperTriangle() {
 //! \param np index of the neighbouring triangle
 //! \param tri 
 //! \returns index in triangle of the vertex in tri opposite of triangle \p np
-
 int Triangulation::oppositeIndex(const TriInd np, const Triangle& tri) {
     if (np == tri.neighbours[0]) {
         return 2;

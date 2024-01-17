@@ -54,6 +54,9 @@ struct FogOfWarSettings : Settings {
 
 struct SeekSystemSettings : Settings {
     enum Options {
+        SHOW_PATH,
+        SHOW_PORTALS,
+        SHOW_FUNNEL,
         COUNT_OPTS,
     };
 

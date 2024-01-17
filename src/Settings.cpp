@@ -46,10 +46,16 @@ SeekSystemSettings::SeekSystemSettings()
     value_names_[Values::FINISH_N_STEPS] = "finish delay";
     value_names_[Values::FINISH_CONE_LEN] = "cone len";
 
+    option_names_[Options::SHOW_FUNNEL] = "show funnel";
+    option_names_[Options::SHOW_PORTALS] = "show portals";
+    option_names_[Options::SHOW_PATH] = "show path";
+
     values_[Values::FINISH_ANGLE] = 36;
     values_[Values::FINISH_RADIUS] = 50;
     values_[Values::FINISH_N_STEPS] = 1;
     values_[Values::FINISH_CONE_LEN] = 10;
+
+    options_.fill(0);
 }
 
 void SeekSystemSettings::toggleOption(int o)
