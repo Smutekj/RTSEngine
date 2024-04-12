@@ -2,398 +2,623 @@
 
 #include "Systems/VisionSystem.h"
 #include "Systems/SeekSystem.h"
+#include "Systems/PhysicsSystem.h"
 
-#include "DebugInfo.h"
 #include "Game.h"
+#include "UnitInitializer.h"
 
-    ClickableBox::ClickableBox(sf::Vector2f position, sf::Vector2f size, std::string text)
-        : bounding_box_(size) {
-        bounding_box_.setPosition(position);
-        bounding_box_.setOutlineColor(sf::Color::Black);
-        bounding_box_.setOutlineThickness(1);
-        info_text_.setString(text);
-        info_text_.setPosition(bounding_box_.getPosition());
-        info_text_.setFillColor(sf::Color::Black);
-        info_text_.setScale(0.25, 0.25);
-        //        info_text_.setCharacterSize(
+#include "Graphics/RenderWindow.hpp"
+#include "Graphics/SceneLayer.h"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
+#include "Utils/DebugInfo.h"
+#include "Utils/magic_enum.hpp"
+#include "Utils/magic_enum_utility.hpp"
+
+
+
+std::vector<std::string> separateLine(std::string line, char delimiter = ' ')
+{
+    std::vector<std::string> result;
+    int start = 0;
+    int end = 0;
+
+    while ((start = line.find_first_not_of(' ', end)) != std::string::npos)
+    {
+        end = line.find(' ', start);
+        result.push_back(line.substr(start, end - start));
     }
-
-    bool ClickableBox::contains(const sf::Vector2f& r) { return bounding_box_.getGlobalBounds().contains(r); }
-
-
-    Slider2::Slider2(sf::Vector2f center, sf::Vector2f size, std::string text, const sf::Font& font, int ind_in_settings,
-            Settings* controled_settings, float min_value, float max_value)
-        : Widget(center, size, text, ind_in_settings, controled_settings)
-        , min_value_(min_value)
-        , max_value_(max_value) {
-
-        slider_rectangle_.setSize({size.y / 3.f, size.y});
-        slider_rectangle_.setPosition(bounding_box_.getPosition().x + bounding_box_.getSize().x,
-                                      bounding_box_.getPosition().y);
-
-        slider_rectangle_.setOutlineColor(sf::Color::Blue);
-        slider_rectangle_.setFillColor(sf::Color::Blue);
-
-        value_text_.setFillColor(sf::Color::Black);
-        value_text_.setScale(0.25, 0.25);
-        value_text_.setPosition(bounding_box_.getPosition().x + bounding_box_.getSize().x * 1.15f,
-                                bounding_box_.getPosition().y - slider_rectangle_.getSize().y);
-        value_text_.setString("1.000");
-        value_text_.setFont(font);
-        info_text_.setFillColor(sf::Color::Black);
-        info_text_.setPosition(bounding_box_.getPosition().x, bounding_box_.getPosition().y);
-        info_text_.setScale(0.25, 0.25);
-        info_text_.setString(text);
-        info_text_.setFont(font);
-    }
-
-
-     void Slider2::onRelease(sf::RenderWindow& window)  { is_active = false; }
-
-     void Slider2::onKeyRelease() {};
-     void Slider2::onKeyPress(const sf::Keyboard::Key& pressed_key) {};
-     void Slider2::onClick(sf::RenderWindow& window)  {
-        const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-
-        const auto slider_thingy_bounds = slider_rectangle_.getGlobalBounds();
-        const auto slider_bounds = bounding_box_.getGlobalBounds();
-        if (slider_bounds.contains(mouse_coords)) {
-            is_active = true;
-
-            const auto slider_box_size = bounding_box_.getSize().x;
-            auto current_value_ = (mouse_coords.x - bounding_box_.getPosition().x) / slider_box_size;
-            if (current_value_ > 1) {
-                current_value_ = 1;
-            }
-            if (current_value_ < 0) {
-                current_value_ = 0;
-            }
-
-            slider_rectangle_.setPosition(bounding_box_.getPosition().x + current_value_ * slider_box_size,
-                                          slider_rectangle_.getPosition().y);
-
-            p_controled_settings_->setValue(controled_ind_in_settings, current_value_);
-            std::string value_string = std::to_string(current_value_);
-            value_string.resize(5); // = value_string.begin() + 4;
-            value_text_.setString(value_string);
-        }
-    }
-
-     void Slider2::draw(sf::RenderWindow& window)  {
-        window.draw(bounding_box_);
-        window.draw(slider_rectangle_);
-        window.draw(value_text_);
-        window.draw(info_text_);
-    }
-
-    void Slider2::onMouseButtonHold(sf::RenderWindow& window) {
-        const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-
-        if (is_active and bounding_box_.getGlobalBounds().contains(mouse_coords)) {
-            const auto slider_box_size = bounding_box_.getSize().x;
-            auto current_value_ = (mouse_coords.x - bounding_box_.getPosition().x) / slider_box_size;
-            if (current_value_ > 1) {
-                current_value_ = 1;
-            }
-            if (current_value_ < 0) {
-                current_value_ = 0;
-            }
-            slider_rectangle_.setPosition(bounding_box_.getPosition().x + current_value_ * slider_box_size,
-                                          slider_rectangle_.getPosition().y);
-
-            p_controled_settings_->setValue(controled_ind_in_settings, current_value_);
-
-            std::string value_string = std::to_string(current_value_);
-            value_string.resize(5); // = value_string.begin() + 4;
-            value_text_.setString(value_string);
-        }
-    }
-
-
-Button2::Button2(sf::Vector2f center, sf::Vector2f size, std::string text, const sf::Font& font, int ind_in_settings,
-        Settings* controled_settings)
-    : Widget(center, size, text, ind_in_settings, controled_settings) {
-    info_text_.setFont(font);
-}
-
-Button2::Button2(const Button2& b)
-    : Widget(b.bounding_box_.getPosition(), b.bounding_box_.getSize(), b.info_text_.getString(),
-                b.controled_ind_in_settings, b.p_controled_settings_) {}
-
-void Button2::draw(sf::RenderWindow& window) {
-    window.draw(bounding_box_);
-    window.draw(info_text_);
-}
-
-void Button2::onClick(sf::RenderWindow& window) {
-    const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    if (contains(mouse_coords)) {
-        has_been_clicked_ = true;
-    }
-}
-void Button2::onRelease(sf::RenderWindow& window)  {
-    const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    if (has_been_clicked_ and contains(mouse_coords)) {
-        p_controled_settings_->toggleOption(controled_ind_in_settings);
-    }
-}
-
-void Button2::onMouseButtonHold(sf::RenderWindow& window) {}
-void Button2::onKeyRelease() {};
-void Button2::onKeyPress(const sf::Keyboard::Key& pressed_key){};
-
-
-
-    NumberField::NumberField(sf::Vector2f center, sf::Vector2f size, std::string text, const sf::Font& font, int ind_in_settings,
-                Settings* controled_settings, float min_value, float max_value)
-        : Widget(center, size, text, ind_in_settings, controled_settings)
-        , min_value_(min_value)
-        , max_value_(max_value) {
-
-        value_text_.setPosition(bounding_box_.getPosition());
-        std::string value = std::to_string(controled_settings->getValue(ind_in_settings));
-        value.resize(5);
-        value_text_.setString(value);
-        value_text_.setFillColor(sf::Color::Black);
-        value_text_.scale(0.25, 0.25);
-        value_text_.setFont(font);
-        info_text_.setFont(font);
-
-        const auto character_size = value_text_.getCharacterSize() * value_text_.getScale().x * 0.5f;
-        insertion_point_line_.setFillColor(sf::Color::Transparent);
-        insertion_point_line_.setPosition(bounding_box_.getPosition().x + character_size * value.length(),
-                                          bounding_box_.getPosition().y);
-        insertion_point_line_.setSize({size.y / 3.0f, size.y * 0.95f});
-    }
-
-    void NumberField::onMouseButtonHold(sf::RenderWindow& window) {}
-
-    void NumberField::onClick(sf::RenderWindow& window) {
-        const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        const auto field_bounds = bounding_box_.getGlobalBounds();
-        if (field_bounds.contains(mouse_coords)) {
-            has_been_clicked_ = true;
-        } else {
-            if (is_active) {
-                has_been_clicked_ = false;
-                value_text_.setString(old_value_);
-                is_active = false;
-            }
-        }
-    }
-
-    void NumberField::onRelease(sf::RenderWindow& window) {
-        const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        const auto field_bounds = bounding_box_.getGlobalBounds();
-        if (field_bounds.contains(mouse_coords) and has_been_clicked_) {
-            has_been_clicked_ = false;
-            is_active = true;
-            old_value_ = value_text_.getString();
-        }
-    }
-
-    void NumberField::update() {
-        if (is_active) {
-            frames_since_last_seen_++;
-            if (frames_since_last_seen_ > 30) {
-                auto current_color = insertion_point_line_.getFillColor();
-                current_color.a = 255 - current_color.a;
-                insertion_point_line_.setFillColor(current_color);
-                frames_since_last_seen_ = 0;
-            }
-        }
-    }
-
-    void NumberField::onKeyRelease() { key_pressed_ = false; }
-
-    void NumberField::onKeyPress(const sf::Keyboard::Key& pressed_key) {
-        if (is_active and !key_pressed_) {
-            key_pressed_ = true;
-
-            std::string current_string = value_text_.getString();
-            bool too_many_digits = current_string.size() > max_n_digits_;
-
-            float character_size = value_text_.getCharacterSize() * value_text_.getScale().x;
-            if (pressed_key >= sf::Keyboard::Num0 and pressed_key <= sf::Keyboard::Num9 and !too_many_digits) {
-                current_string += static_cast<char>(pressed_key - sf::Keyboard::Num0 + '0');
-            }
-            if (pressed_key >= sf::Keyboard::Numpad0 and pressed_key <= sf::Keyboard::Numpad9 and !too_many_digits) {
-                current_string += static_cast<char>(pressed_key - sf::Keyboard::Numpad0 + '0');
-            }
-            if ((pressed_key == sf::Keyboard::Period or pressed_key == sf::Keyboard::Comma) and !number_has_point and
-                !too_many_digits) {
-                current_string += '.';
-                number_has_point = true;
-            }
-            if (pressed_key == sf::Keyboard::BackSpace) {
-                if (current_string.size() > 0) {
-                    if (static_cast<char>(current_string[current_string.size() - 1]) == '.') {
-                        number_has_point = false;
-                    }
-                    current_string.resize(current_string.size() - 1);
-                    character_size *= -1;
-                }
-            }
-            insertion_point_line_.move({character_size, 0});
-            value_text_.setString(current_string);
-
-            if (pressed_key == sf::Keyboard::Enter) {
-                p_controled_settings_->setValue(controled_ind_in_settings, std::stof(current_string));
-                is_active = false;
-            }
-            if (pressed_key == sf::Keyboard::Escape) {
-                value_text_.setString(old_value_);
-                is_active = false;
-            }
-        }
-    }
-
-    void NumberField::draw(sf::RenderWindow& window) {
-        update();
-        window.draw(bounding_box_);
-        //        window.draw(insertion_point_line_);
-        window.draw(value_text_);
-    }
-
-
-UI::UI(Game& game, VisionSystem& fow, DebugInfo& dbg) {
-    const std::string font_path{std::filesystem::current_path()};
-    if (!font.loadFromFile(font_path + "/../Resources/arial.ttf")) {
-        throw std::runtime_error("no font file at " + font_path);
-    }
-
-    sf::Vector2f center;
-    auto& dbg_settings = dbg.getSettings();
-    typedef DebugInfoSettings2::Options Options;
-
-    // auto& bc_settings = bc.getSettings();
-
-    sf::Vector2f window_size = {button_size_.x, button_size_.y * 20.f};
-    ui_view_.setViewport(sf::FloatRect(0.0f, 0.0f, 0.1f, 1.0f));
-    ui_view_.setSize(window_size);
-    ui_view_.setCenter(window_size / 2.f);
-
-    const sf::Vector2f upper_left_pos1 = {0, 0};
-    const sf::Vector2f upper_left_pos2 = {0, 1.0f * button_size_.y};
-    const sf::Vector2f upper_left_pos3 = {0, 2.0f * button_size_.y};
-    const sf::Vector2f upper_left_pos4 = {0, 3.0f * button_size_.y};
-
-    auto& path_settings = game.p_the_god_->getSystem<SeekSystem>(ComponentID::PATHFINDING).settings_;
-
-    std::unique_ptr<Widget> popup_window(
-        new PopUpWindow<Button2>(upper_left_pos1, button_size_, "Triangulation", font, &dbg_settings));
-    std::unique_ptr<Widget> popup_window2(
-        new PopUpWindow<NumberField>(upper_left_pos2, button_size_, "Seek", font, &path_settings));
-    std::unique_ptr<Widget> popup_window3(
-        new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "Unit Creator", font, &game.uc_settings_));
-    std::unique_ptr<Widget> popup_window4(
-        new PopUpWindow<NumberField>(upper_left_pos4, button_size_, "Fog Of War", font, &fow.settings_));
-    
-    widgets_.push_back(std::move(popup_window));
-    widgets_.push_back(std::move(popup_window2));
-    widgets_.push_back(std::move(popup_window3));
-    widgets_.push_back(std::move(popup_window4));
-
-    const auto ui_view_upper_left = ui_view_.getCenter() - ui_view_.getSize() / 2.0f;
-
-    control_panel_boundary_.setSize(ui_view_.getSize());
-    control_panel_boundary_.setOutlineThickness(1);
-    control_panel_boundary_.setOutlineColor(sf::Color::Black);
-    control_panel_boundary_.setFillColor({0, 0, 1, 69});
-    control_panel_boundary_.setPosition(ui_view_upper_left);
+    return result;
 }
 
 
+UIWindow::UIWindow(std::string name) : name(name)
+{
+}
 
-// UI::UI(Game& game, VisionSystem& fow, DebugInfo& dbg) {
-//     const std::string font_path{std::filesystem::current_path()};
-//     if (!font.loadFromFile(font_path + "/../Resources/arial.ttf")) {
-//         throw std::runtime_error("no font file at " + font_path);
-//     }
+UI::UI(sf::RenderWindow &window, Game &game, VisionSystem &fow, DebugInfo &dbg)
+{
 
-//     sf::Vector2f center;
-//     auto& dbg_settings = dbg.getSettings();
-//     typedef DebugInfoSettings2::Options Options;
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+    // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
 
+    // // // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window.handle, true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
 
-//     sf::Vector2f window_size = {button_size_.x, button_size_.y * 20.f};
-//     ui_view_.setViewport(sf::FloatRect(0.0f, 0.0f, 0.1f, 1.0f));
-//     ui_view_.setSize(window_size);
-//     ui_view_.setCenter(window_size / 2.f);
+    auto &ps = game.p_the_god_->getSystem<PhysicsSystem>(ComponentID::PHYSICS);
+    auto &ss = game.p_the_god_->getSystem<SeekSystem>(ComponentID::PATHFINDING);
+    auto physics_window = std::make_unique<PhysicsWindow>(ps);
+    auto pf_window = std::make_unique<PathfindingWindow>(ss, dbg);
+    auto debuginfo_window = std::make_unique<DeubgInfoWindow>(dbg);
+    auto shaders_window = std::make_unique<ShadersWindow>(game.building_scene);
+    auto unit_window = std::make_unique<UnitMakerWindow>(*game.unit_creator_);
 
-//     const sf::Vector2f upper_left_pos1 = {0, 0};
-//     const sf::Vector2f upper_left_pos2 = {0, 1.0f * button_size_.y};
-//     const sf::Vector2f upper_left_pos3 = {0, 2.0f * button_size_.y};
+    windows[UIWindowType::PHYSICS] = std::move(physics_window);
+    windows[UIWindowType::PATHFINDING] = std::move(pf_window);
+    windows[UIWindowType::DEBUG] = std::move(debuginfo_window);
+    windows[UIWindowType::SHADERS] = std::move(shaders_window);
+    windows[UIWindowType::UNIT_MAKER] = std::move(unit_window);
 
-//     std::unique_ptr<Widget> popup_window(
-//         new PopUpWindow<Button2>(upper_left_pos1, button_size_, "Triangulation", font, &dbg_settings));
-//     std::unique_ptr<Widget> popup_window3(
-//         new PopUpWindow<NumberField>(upper_left_pos2, button_size_, "Unit Creator", font, &game.uc_settings_));
-//     std::unique_ptr<Widget> popup_window4(
-//         new PopUpWindow<NumberField>(upper_left_pos3, button_size_, "Fog Of War", font, &fow.settings_));
-    
-//     widgets_.push_back(std::move(popup_window));
-//     widgets_.push_back(std::move(popup_window3));
-//     widgets_.push_back(std::move(popup_window4));
+    is_active[UIWindowType::PHYSICS] = true;
+    is_active[UIWindowType::PATHFINDING] = true;
+    is_active[UIWindowType::DEBUG] = true;
+    is_active[UIWindowType::SHADERS] = true;
+    is_active[UIWindowType::UNIT_MAKER] = true;
 
-//     const auto ui_view_upper_left = ui_view_.getCenter() - ui_view_.getSize() / 2.0f;
+    names[UIWindowType::PHYSICS] = "Physics";
+    names[UIWindowType::PATHFINDING] = "Pathfinding";
+    names[UIWindowType::DEBUG] = "DebugInfo";
+    names[UIWindowType::SHADERS] = "Shaders";
+    names[UIWindowType::UNIT_MAKER] = "Units";
+}
 
-//     control_panel_boundary_.setSize(ui_view_.getSize());
-//     control_panel_boundary_.setOutlineThickness(1);
-//     control_panel_boundary_.setOutlineColor(sf::Color::Black);
-//     control_panel_boundary_.setFillColor({0, 0, 1, 69});
-//     control_panel_boundary_.setPosition(ui_view_upper_left);
+// void UI::update(){
+
 // }
 
-void UI::draw(sf::RenderWindow& window) {
-
-    auto old_view = window.getView();
-    window.setView(ui_view_);
-    for (auto& widget : widgets_) {
-        widget->draw(window);
-    }
-    window.draw(control_panel_boundary_);
-    window.setView(old_view);
+UIWindow::~UIWindow()
+{
 }
 
-void UI::onRelease(sf::RenderWindow& window) {
-    auto old_view = window.getView();
-    window.setView(ui_view_);
-    const auto current_mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    for (auto& widget : widgets_) {
-        widget->onRelease(window);
-    }
-    window.setView(old_view);
+void UI::showWindow()
+{
 }
 
-void UI::onMouseHold(sf::RenderWindow& window) {
-    auto old_view = window.getView();
-    window.setView(ui_view_);
-    const auto current_mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    for (auto& widget : widgets_) {
-        widget->onMouseButtonHold(window);
+void UI::draw(sf::RenderWindow &window)
+{
+
+    // ImGui::ShowDemoWindow(&a);
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::Begin("Control Panel"); // Create a window called "Hello, world!" and append into it.
+    for (auto &[window_type, p_window] : windows)
+    {
+        if (ImGui::Button(p_window->getName().c_str()))
+            is_active[window_type] = !is_active[window_type];
     }
-    window.setView(old_view);
+
+    ImGui::End();
+
+    for (auto &[window_type, p_window] : windows)
+    {
+        if (is_active[window_type])
+            p_window->draw();
+    }
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UI::onKeyRelease(sf::RenderWindow& window) {
-    for (auto& widget : widgets_) {
-        widget->onKeyRelease();
+PhysicsWindow::PhysicsWindow(PhysicsSystem &ps) : UIWindow("Physics")
+{
+    controled_data.at(Data::MAX_SPEED) = &ps.max_speed;
+}
+
+PhysicsWindow::~PhysicsWindow() {}
+
+void PhysicsWindow::draw()
+{
+
+    ImGui::Begin(name.c_str());               // Create a window called "Hello, world!" and append into it.
+    ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+
+    // ImGui::SliderFloat("float", gravity, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+
+    ImGui::SliderFloat("float", (float *)controled_data.at(Data::MAX_SPEED), 0.0f, 50.0f); // Edit 1 float using a slider from 0.0f to 1.0f
+    // ImGui::ColorEdit3("clear color", (float*)&); // Edit 3 floats representing a color
+
+    // if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+
+    ImGui::End();
+}
+
+DeubgInfoWindow::DeubgInfoWindow(DebugInfo &di) : UIWindow("Debug info")
+{
+    auto &settings = di.getSettings();
+    controled_data.at(Data::SHOW_GRID) = &settings.options_.at(DebugInfoSettings2::Options::DRAW_BUILDING_GRID);
+    controled_data.at(Data::SHOW_TRI_INDS) = &settings.options_.at(DebugInfoSettings2::Options::DRAW_TRI_INDS);
+    controled_data.at(Data::SHOW_TRIANGLES) = &settings.options_.at(DebugInfoSettings2::Options::DRAW_TRIANGLES);
+}
+
+DeubgInfoWindow::~DeubgInfoWindow() {}
+
+void DeubgInfoWindow::draw()
+{
+
+    ImGui::Begin(name.c_str());               // Create a window called "Hello, world!" and append into it.
+    ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+
+    if (ImGui::Button("Show Grid"))
+    {
+        bool &value = *static_cast<bool *>(controled_data.at(Data::SHOW_GRID));
+        value = !(value);
+    }
+    if (ImGui::Button("Show Triangle indices"))
+    {
+        bool &value = *static_cast<bool *>(controled_data.at(Data::SHOW_TRI_INDS));
+        value = !(value);
+    }
+    if (ImGui::Button("Show triangles"))
+    {
+        bool &value = *static_cast<bool *>(controled_data.at(Data::SHOW_TRIANGLES));
+        value = !(value);
+    }
+
+    ImGui::End();
+}
+
+UnitMakerWindow::UnitMakerWindow(UnitInitializer &unit_init) : p_unit_maker(&unit_init), UIWindow("Unit maker")
+{
+    // controled_data.at(Data2::RADIUS) = &new_unit_data.radius;
+    // controled_data.at(Data2::MAX_VEL) = &new_unit_data.max_vel;
+    // controled_data.at(Data2::WEAPON_RANGE) = &new_unit_data.max_range;
+    // controled_data.at(Data2::VISION_RADIUS) = &new_unit_data.r_vision;
+    // controled_data.at(Data2::ROTATION_VEL) = &new_unit_data.rot_vel;
+    // controled_data.at(Data2::MASS) = &new_unit_data.mass;
+
+    readUnitTypesFile();
+
+
+    for(auto [unit_type_name, type_ind] : type_name2type_ind){
+        
+        const auto& values = type_ind2data_values.at(type_ind);
+        new_unit_data.radius = values.at(Data2::RADIUS);
+        new_unit_data.mass   = values.at(Data2::MASS);
+        new_unit_data.max_vel = values.at(Data2::MAX_VEL);
+        new_unit_data.rot_vel = values.at(Data2::ROTATION_VEL);
+        new_unit_data.r_vision = values.at(Data2::VISION_RADIUS);
+        new_unit_data.max_range = values.at(Data2::WEAPON_RANGE);
+        p_unit_maker->registerUnitType(new_unit_data.radius, new_unit_data.mass, new_unit_data.weapon_type_ind,
+                                                new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
+                                                30.f, new_unit_name);
+    }
+    
+    
+}
+
+void UnitMakerWindow::readUnitTypesFile(){
+
+    const auto filename = unit_types_file_name;
+    std::ifstream file(filename);
+
+    std::string line;
+    
+    int data_type_ind = 0;
+    while(    std::getline(file, line)){ //! iterate over [UnitType] blocks
+        if(line != "[UnitType]"){throw std::runtime_error("congrats, you fucked up file format yet again, lol");}
+        std::getline(file, line);
+        auto words_on_line = separateLine(line);
+
+        type_ind2data_values.resize(data_type_ind + 1);
+        type_ind2data_inds.resize(data_type_ind + 1);
+        type_ind2name.resize(data_type_ind + 1);
+
+        auto& data_values = type_ind2data_values.at(data_type_ind);
+        std::string unit_type_name = words_on_line.at(1);
+        type_ind2name.at(data_type_ind) = unit_type_name;
+        type_name2type_ind[unit_type_name] = data_type_ind;
+
+        while (std::getline(file, line))
+        {
+            if(line == "END"){break;}
+            auto words_on_line = separateLine(line);
+            assert(words_on_line.size() == 2);
+
+            const auto datum_name = words_on_line.at(0);
+            const auto datum_value = std::stof(words_on_line.at(1));
+
+            const auto datum_type = magic_enum::enum_cast<Data2>(datum_name).value();
+            data_values[datum_type] = datum_value;
+        }
+        data_type_ind++;
+    }
+    file.close();
+}
+
+void UnitMakerWindow::appendToUnitTypesFile(){
+    std::ofstream file;
+    file.open(unit_types_file_name, std::ios_base::app); // append instead of overwrite
+    file << "[UnitType]\n";
+    file << "name " + new_unit_name + "\n";
+
+    for(int data_ind = 0; data_ind < unit_data_count; data_ind++){
+
+        const auto data_type = magic_enum::enum_value<Data2>(data_ind);
+        const auto data_name = std::string(magic_enum::enum_name(data_type));
+
+        file << data_name + " " + std::to_string(new_unit_data2[data_type]) + "\n";
+    }
+    file << "END\n";
+    file.close();
+}
+
+void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerWindow::Data2 datum_type, float datum_value){
+
+    const auto filename = unit_types_file_name;
+    const auto tmp_filename = filename + ".tmp";
+    const auto backup_filename = filename + ".backup";
+    std::ifstream file(filename);
+    std::ofstream backup_file(backup_filename);
+    std::ofstream new_file(tmp_filename);
+    std::string line;
+
+    const auto datum_name = std::string(magic_enum::enum_name(datum_type));
+
+    //! backup the file
+    while (std::getline(file, line)){ backup_file << line << "\n"; }
+    backup_file.close();
+    file.close();
+
+    file.open(filename);
+    bool found_right_unit = false;
+    //! read the file and write changed version to tmp_file
+    while (std::getline(file, line))
+    {
+        auto words_on_line = separateLine(line);
+        if(line.empty()){
+            continue;
+        }
+        if(words_on_line.at(0) == "name" && line.substr(5, line.size()) == new_unit_name){
+           found_right_unit = true;
+        }
+        if(found_right_unit && words_on_line.at(0) == datum_name){
+            line = datum_name + " " + std::to_string(datum_value);
+            found_right_unit = false;
+        }
+        new_file << line << "\n";
+    }
+    new_file.close();
+    file.close();
+
+    std::remove(filename.c_str());
+    std::rename(tmp_filename.c_str(), filename.c_str());
+
+
+}
+
+
+void UnitMakerWindow::draw()
+{
+
+    auto& unit_data = p_unit_maker->unit_type2data_;
+    if (ImGui::TreeNode("Unit Maker"))
+    {
+        if (ImGui::BeginListBox("Unit Types"))
+        {
+            for (auto& [unit_type_name, unit_type_ind] : p_unit_maker->unit_name2type_ind)
+            {
+                auto& type_data = unit_data.at(unit_type_ind);
+                const bool is_selected = (selected_unit_ind == unit_type_ind);
+                if (ImGui::Selectable(unit_type_name.c_str(), is_selected))
+                {
+                    selected_unit_ind = unit_type_ind;
+                }
+
+                // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                if (is_selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndListBox();
+        }
+        ImGui::TreePop();
+    }
+    if (ImGui::TreeNode("New Unit Properties"))
+    {
+        if (ImGui::BeginListBox("Unit Data"))
+        {
+
+            constexpr std::size_t unit_data_count = magic_enum::enum_count<Data2>();
+            for(int data_ind = 0; data_ind < unit_data_count; ++data_ind){
+                auto data_type = magic_enum::enum_value<Data2>(data_ind);
+                const auto data_name = std::string(magic_enum::enum_name(data_type));
+                bool is_selected = false;
+                if(ImGui::InputFloat(data_name.c_str(), &(new_unit_data2[data_type]))){
+                    changeUnitTypeDatum(new_unit_name, data_type, new_unit_data2[data_type]);
+                }
+            }
+            ImGui::EndListBox();
+        }
+        ImGui::TreePop();
+    }
+    // if (ImGui::TreeNode("Selected Unit Properties"))
+    // {
+    //     if (ImGui::BeginListBox("Unit Data"))
+    //     {
+    //         constexpr std::size_t unit_data_count = magic_enum::enum_count<Data2>();
+    //         const auto& selected_data = p_unit_maker->unit_type2data_.at(selected_unit_ind);
+    //         for(int data_ind = 0; data_ind < unit_data_count; ++data_ind){
+    //             const auto data_name = std::string(magic_enum::enum_name(magic_enum::enum_value<Data2>(data_ind)));
+    //             bool is_selected = false;
+    //             ImGui::Text(data_name.c_str(), selected_data.mass);
+    //         }
+    //         ImGui::EndListBox();
+    //     }
+    //     ImGui::TreePop();
+    // }
+    
+    if(ImGui::Button("Register new unit")){
+        p_unit_maker->registerUnitType(new_unit_data.radius, new_unit_data.mass, new_unit_data.weapon_type_ind,
+                                         new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
+                                         30.f, new_unit_name);
+        appendToUnitTypesFile();
+    }
+
+    ImGui::InputText("new unit name", new_unit_name.data(), 500);
+    p_unit_maker->selected_unit_type_ind = selected_unit_ind;
+}
+
+UnitMakerWindow::~UnitMakerWindow() {}
+
+PathfindingWindow::PathfindingWindow(SeekSystem &ss, DebugInfo &dbg) : UIWindow("Pathfinding")
+{
+    controled_data.at(Data::SHOW_PATH) = &dbg.draw_path;
+    dbg.p_pathfinder = ss.p_pathfinder_;
+}
+
+PathfindingWindow::~PathfindingWindow() {}
+
+void PathfindingWindow::draw()
+{
+    {
+        ImGui::Begin("Pathfinding!");             // Create a window called "Hello, world!" and append into it.
+        ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+        if (ImGui::Button("Show triangles"))
+        {
+            bool &value = *static_cast<bool *>(controled_data.at(Data::SHOW_PATH));
+            value = !(value);
+        }
+        ImGui::End();
     }
 }
 
-void UI::onKeyPress(const sf::Keyboard::Key& pressed_key) {
-    for (auto& widget : widgets_) {
-        widget->onKeyPress(pressed_key);
-    }
+ShadersWindow::ShadersWindow(BuildingLayer &bl) : UIWindow("Shaders")
+{
+    ShaderUIData d;
+    d.p_program = &bl.id2shader.at(BuildingLayer::GraphicsID::BUILDING1);
+    ColorData data;
+    data.uniform_name = "base_color";
+    d.colors.push_back(data);
+
+    data.uniform_name = "center_color";
+    d.colors.push_back(data);
+
+    ValueData data_v;
+    data_v.uniform_name = "wandering_radius";
+    data_v.value = 0.2f;
+    d.values.push_back(data_v);
+    data_v.uniform_name = "scale";
+    data_v.value = 10;
+    d.values.push_back(data_v);
+
+    shaders.push_back(d);
+
+    d.colors.clear();
+    d.values.clear();
+    d.p_program = &bl.id2shader.at(BuildingLayer::GraphicsID::BUILDING2);
+    data.uniform_name = "base_color";
+    d.colors.push_back(data);
+    data.uniform_name = "spots_color";
+    d.colors.push_back(data);
+    shaders.push_back(d);
 }
 
-void UI::onClick(sf::RenderWindow& window) {
-    auto old_view = window.getView();
-    window.setView(ui_view_);
-    mouse_coords_on_click_ = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    for (auto& widget : widgets_) {
-        widget->onClick(window);
+ShadersWindow::~ShadersWindow() {}
+
+static void drawStuff(glm::vec4 &color)
+{
+    // ImGui::SeparatorText("Color picker");
+    static bool alpha = true;
+    static bool alpha_bar = true;
+    static bool side_preview = true;
+    static bool ref_color = true;
+    static ImVec4 ref_color_v(1.0f, 0.0f, 1.0f, 0.5f);
+    static int display_mode = 0;
+    static int picker_mode = 0;
+
+    ImGui::Combo("Display Mode", &display_mode, "Auto/Current\0None\0RGB Only\0HSV Only\0Hex Only\0");
+    ImGuiColorEditFlags flags;
+    if (!alpha)
+        flags |= ImGuiColorEditFlags_NoAlpha; // This is by default if you call ColorPicker3() instead of ColorPicker4()
+    if (alpha_bar)
+        flags |= ImGuiColorEditFlags_AlphaBar;
+    if (!side_preview)
+        flags |= ImGuiColorEditFlags_NoSidePreview;
+    if (picker_mode == 1)
+        flags |= ImGuiColorEditFlags_PickerHueBar;
+    if (picker_mode == 2)
+        flags |= ImGuiColorEditFlags_PickerHueWheel;
+    if (display_mode == 1)
+        flags |= ImGuiColorEditFlags_NoInputs; // Disable all RGB/HSV/Hex displays
+    if (display_mode == 2)
+        flags |= ImGuiColorEditFlags_DisplayRGB; // Override display mode
+    if (display_mode == 3)
+        flags |= ImGuiColorEditFlags_DisplayHSV;
+    if (display_mode == 4)
+        flags |= ImGuiColorEditFlags_DisplayHex;
+    ImGui::ColorPicker4("MyColor##4", (float *)&color, flags, ref_color ? &ref_color_v.x : NULL);
+}
+
+void setShaderVariableValue(Shader &shader, std::string var_name, glm::vec4 color)
+{
+
+    const auto filename = shader.fragment_path;
+    const auto tmp_filename = filename + ".tmp";
+    std::ifstream file(filename);
+    std::ofstream new_file(tmp_filename);
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::stringstream iss(line);
+
+        auto words_on_line = separateLine(line);
+        if (words_on_line.size() >= 3 && words_on_line.at(0) == "const")
+        {
+            if (words_on_line.at(2) == var_name)
+            {
+
+                std::string new_value = "vec4(" + std::to_string(color.x) + "," +
+                                        std::to_string(color.y) + "," +
+                                        std::to_string(color.z) + "," +
+                                        std::to_string(color.w) + ");";
+
+                words_on_line.at(4) = new_value;
+
+                line = "";
+                for (const auto &word : words_on_line)
+                {
+                    line += word;
+                    line += " ";
+                }
+            }
+        }
+
+        new_file << line << "\n";
     }
-    window.setView(old_view);
+    new_file.close();
+    file.close();
+
+    std::remove(filename.c_str());
+    std::rename(tmp_filename.c_str(), filename.c_str());
+    shader.recompile();
+}
+
+void setShaderVariableValue(Shader &shader, std::string var_name, float value)
+{
+
+    const auto filename = shader.fragment_path;
+    const auto tmp_filename = filename + ".tmp";
+    std::ifstream file(filename);
+    std::ofstream new_file(tmp_filename);
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::stringstream iss(line);
+
+        auto words_on_line = separateLine(line);
+        if (words_on_line.size() >= 3 && words_on_line.at(0) == "const")
+        {
+            if (words_on_line.at(2) == var_name)
+            {
+
+                std::string new_value = std::to_string(value);
+
+                words_on_line.at(4) = new_value + ";";
+
+                line = "";
+                for (const auto &word : words_on_line)
+                {
+                    line += word;
+                    line += " ";
+                }
+            }
+        }
+
+        new_file << line << "\n";
+    }
+    new_file.close();
+    file.close();
+
+    std::remove(filename.c_str());
+    std::rename(tmp_filename.c_str(), filename.c_str());
+    shader.recompile();
+}
+
+void ShadersWindow::draw()
+{
+    {
+        ImGui::Begin("Shader!");
+
+        static int chosen_shader_ind = 0; // Here we store our selection data as an index.
+        static int chosen_field_ind = 0;  // Here we store our selection data as an index.
+        if (ImGui::TreeNode("Shaders"))
+        {
+            if (ImGui::BeginListBox("Shaders"))
+            {
+                for (int n = 0; n < shaders.size(); n++)
+                {
+                    const bool is_selected = (chosen_shader_ind == n);
+                    if (ImGui::Selectable(shaders[n].p_program->shader_name.c_str(), is_selected))
+                    {
+                        chosen_shader_ind = n;
+                        chosen_field_ind = 0;
+                    }
+
+                    // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                    if (is_selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndListBox();
+            }
+            ImGui::TreePop();
+        }
+
+        auto &shader_data = shaders.at(chosen_shader_ind);
+
+        if (ImGui::TreeNode("Field Picker"))
+        {
+            if (ImGui::BeginListBox("Color Fields"))
+            {
+                for (int n = 0; n < shader_data.colors.size(); n++)
+                {
+                    const bool is_selected = (chosen_field_ind == n);
+                    if (ImGui::Selectable(shader_data.colors.at(n).uniform_name.c_str(), is_selected))
+                        chosen_field_ind = n;
+                    if (is_selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndListBox();
+            }
+
+            for (int n = 0; n < shader_data.values.size(); n++)
+            {
+                const bool is_selected = (chosen_field_ind == n);
+                if (ImGui::InputFloat(shader_data.values.at(n).uniform_name.c_str(), &shader_data.values.at(n).value))
+                    setShaderVariableValue(*shader_data.p_program,
+                                           shader_data.values.at(n).uniform_name.c_str(),
+                                           shader_data.values.at(n).value);
+            }
+
+            ImGui::TreePop();
+        }
+
+        drawStuff(shader_data.colors.at(chosen_field_ind).value);
+        setShaderVariableValue(*shader_data.p_program,
+                               shader_data.colors.at(chosen_field_ind).uniform_name.c_str(),
+                               shader_data.colors.at(chosen_field_ind).value);
+
+        ImGui::End();
+    }
 }

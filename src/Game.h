@@ -4,13 +4,23 @@
 #include <unordered_set>
 #include <numeric>
 
+
+#include "Utils/Vector.hpp"
+#include "Utils/Grid.h"
+
+#include "Selection.h"
+
 #include "core.h"
-#include "Grid.h"
 #include "MapGrid.h"
 #include "ECS.h"
 #include "Settings.h"
 #include "PathFinding/PathFinder2.h"
 #include "SoundModule.h"
+
+#include "Graphics/RenderWindow.hpp"
+#include "Graphics/SceneLayer.h"
+
+// #include "Clock.hpp"
 
 class UI;
 
@@ -54,7 +64,7 @@ struct UnitCreatorSettings : public Settings {
         value_names_[ACCELERATION] = "accel.";
         values_[RADIUS] = RHARD;
         values_[MAX_SPEED] = 0.75f;
-        values_[TURNRATE] = 24;
+        values_[TURNRATE] = 5;
         values_[ACCELERATION] = 1;
     }
 
@@ -74,8 +84,15 @@ class UnitInitializer ;
 
 class Game {
 
+public:
+    UnitLayer unit_scene;
+    BuildingLayer building_scene;
+    VisionLayer vision_layer;
+    MapGridLayer map_layer;
+
+
     struct Clocks {
-        sf::Clock clock;
+        // sf::Clock clock;
         TimeData pathfinding;
         TimeData2 neighbour_searching;
         TimeData fog_of_war;
@@ -83,7 +100,7 @@ class Game {
     };
 
     Clocks clocks;
-    sf::Clock wall_clock;
+    // sf::Clock wall_clock;
     std::vector<UnitType> unit_types_;
     std::vector<UnitTypeInd> boid_ind2unit_type_;
     sf::Vector2f click_position = {0, 0};
@@ -91,7 +108,7 @@ class Game {
 
     sf::Vector2f start_view_move_position;
     bool view_is_moving = false;
-    std::vector<int> selection;
+    Selection selection_;
 
     sf::Vector2f start_position = {0, 0};
     sf::Vector2f end_position = {0, 0};
@@ -103,16 +120,16 @@ class Game {
     sf::RectangleShape mouse_selection;
     sf::Vector2f box_size;
 
-    sf::Clock building_clock;
+    // sf::Clock building_clock;
 
-    sf::Clock building_clock2;
-    sf::Clock frame_clock;
-    int frame_i = 0;
+    // sf::Clock building_clock2;
+    // sf::Clock frame_clock;
+    // int frame_i = 0;
 
-    sf::Clock explosion_time;
-    float e_time;
+    // sf::Clock explosion_time;
+    // float e_time;
 
-    SoundModule sound_module_;
+    // SoundModule sound_module_;
 
   public:
 
@@ -149,6 +166,8 @@ class Game {
     void createUnitType(const float max_speed, const float radius);
 
   private:
+    void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
     void moveView(sf::RenderWindow& window);
     void parseEvents(sf::RenderWindow& window, UI& ui);
     void updateTriangulation();

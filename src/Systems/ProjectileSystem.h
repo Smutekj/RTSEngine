@@ -61,8 +61,10 @@ struct ProjectileSystem : System2{
     void spawnProjectile(Entity att_entity, sf::Vector2f target);
 
     void update();
-    void draw(sf::RenderTarget &window);
+    // void draw(sf::RenderTarget &window);
     void setTransform(const int &ind, const TransformComponent &trans){}
+    
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
     virtual void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES>& new_data, const std::vector<Entity>& active_entity_inds);
     virtual void communicate(std::array<SharedData, N_MAX_ENTITIES>& entity2shared_data)const;

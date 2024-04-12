@@ -36,25 +36,25 @@
             }
         }
     }
-    void ProjectileSystem::draw(sf::RenderTarget &window){
-        const auto &comps = static_cast<ComponentArray<Projectile> &>(*p_comps_.get()).components_;
-        vertices_.resize(3*comps.size());
-        sf::ConvexShape tri(3);
-        tri.setPoint(0, {2.f/3.f, 0.0});
-        tri.setPoint(1, {-1.f/3.f,-std::sqrt(3.f)/3.f});
-        tri.setPoint(2, {-1.f/3.f, std::sqrt(3.f)/3.f });
+    // void ProjectileSystem::draw(sf::RenderTarget &window){
+    //     const auto &comps = static_cast<ComponentArray<Projectile> &>(*p_comps_.get()).components_;
+    //     vertices_.resize(3*comps.size());
+    //     sf::ConvexShape tri(3);
+    //     tri.setPoint(0, {2.f/3.f, 0.0});
+    //     tri.setPoint(1, {-1.f/3.f,-std::sqrt(3.f)/3.f});
+    //     tri.setPoint(2, {-1.f/3.f, std::sqrt(3.f)/3.f });
         
-        for(int compvec_ind = 0; compvec_ind < comps.size(); ++compvec_ind){
-            auto& comp = comps[compvec_ind];
-            tri.setPosition(comp.transform.r);
-            tri.rotate(comp.transform.angle);
+    //     for(int compvec_ind = 0; compvec_ind < comps.size(); ++compvec_ind){
+    //         auto& comp = comps[compvec_ind];
+    //         tri.setPosition(comp.transform.r);
+    //         tri.rotate(comp.transform.angle);
 
-            vertices_[compvec_ind*3 + 0] = {tri.getPoint(0), sf::Color::Black};
-            vertices_[compvec_ind*3 + 1] = {tri.getPoint(1), sf::Color::Black};
-            vertices_[compvec_ind*3 + 2] = {tri.getPoint(2), sf::Color::Black};
-        }
-        window.draw(vertices_);
-    }
+    //         vertices_[compvec_ind*3 + 0] = {tri.getPoint(0), sf::Color::Black};
+    //         vertices_[compvec_ind*3 + 1] = {tri.getPoint(1), sf::Color::Black};
+    //         vertices_[compvec_ind*3 + 2] = {tri.getPoint(2), sf::Color::Black};
+    //     }
+    //     window.draw(vertices_);
+    // }
     void ProjectileSystem::updateSharedData(const std::array<SharedData, N_MAX_ENTITIES>& new_data, const std::vector<Entity>& active_entity_inds){
         auto &comps = static_cast<ComponentArray<Projectile> &>(*p_comps_.get()).components_;
 

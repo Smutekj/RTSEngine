@@ -1,5 +1,5 @@
 #include "MapGrid.h"
-#include "Triangulation.h"
+#include "PathFinding/Triangulation.h"
 
 MapGrid::MapGrid(sf::Vector2i n_cells, sf::Vector2f box_size, sf::Vector2f cell_size)
     : Grid(n_cells, cell_size), box_size_(box_size)
@@ -15,18 +15,18 @@ MapGrid::MapGrid(sf::Vector2i n_cells, sf::Vector2f box_size, sf::Vector2f cell_
     {
         throw std::runtime_error("texture too big");
     }
-    map_texture.clear(sf::Color::Transparent);
-    sf::Sprite sprite;
-    auto view = map_texture.getView();
+    map_texture.clear();
+    auto& view = map_texture.view;
     // view.setViewport({0.1f, 0.0f, 0.9f, 1.0f});
-    view.setCenter(box_size / 2.f);
-    view.setSize(box_size.x, box_size.y);
-    map_texture.setView(view);
-
+    view.r_center = box_size / 2.f;
+    view.width  = box_size.x;
+    view.height = -box_size.y;  //! I don't even fucking know why there has to be minus... 
+                                //!the whole program is one huge pile of garbage at this point so I guess "In for a penny in for a pound..."
+    
     map_rect.setSize({Geometry::BOX[0], Geometry::BOX[1]});
-    map_rect.setPosition(0, 0);
+    map_rect.setPosition({Geometry::BOX[0]/2, Geometry::BOX[1]/2});
     map_rect.setFillColor(sf::Color::White);
-    map_rect.setTexture(&map_texture.getTexture());
+    // map_rect.setTexture(map_texture.getTextureHandle());
 
     const auto dx = cell_size_.x;
     const auto dy = cell_size_.y;
@@ -43,29 +43,28 @@ MapGrid::MapGrid(sf::Vector2i n_cells, sf::Vector2f box_size, sf::Vector2f cell_
     dl_triangle.setPoint(0, {0, 0});
     dl_triangle.setPoint(1, {dx, 0});
     dl_triangle.setPoint(2, {dx, dy});
-    dl_triangle.setFillColor(sf::Color::Red);
+    dl_triangle.setFillColor(sf::Color::Blue);
+    // dl_triangle.initialize();
+
     // dl_triangle.setTexture(&grass);
 
     dr_triangle.setPointCount(3);
     dr_triangle.setPoint(0, {0, 0});
     dr_triangle.setPoint(1, {dx, 0});
     dr_triangle.setPoint(2, {0, dy});
-    dr_triangle.setFillColor(sf::Color::Red);
-    dr_triangle.setTexture(&grass);
+    dr_triangle.setFillColor(sf::Color::Blue);
 
     ul_triangle.setPointCount(3);
-    ul_triangle.setPoint(0, {dx, 0});
-    ul_triangle.setPoint(1, {dx, dy});
-    ul_triangle.setPoint(2, {0, dy});
-    ul_triangle.setFillColor(sf::Color::Red);
-    ul_triangle.setTexture(&grass);
+    ul_triangle.setPoint(0, {dx, dy});
+    ul_triangle.setPoint(1, {0, dy});
+    ul_triangle.setPoint(2, {dx, 0});
+    ul_triangle.setFillColor(sf::Color::Blue);
 
     ur_triangle.setPointCount(3);
     ur_triangle.setPoint(0, {0, 0});
     ur_triangle.setPoint(1, {dx, dy});
     ur_triangle.setPoint(2, {0, dy});
-    ur_triangle.setFillColor(sf::Color::Red);
-    ur_triangle.setTexture(&grass);
+    ur_triangle.setFillColor(sf::Color::Blue);
 
     const int n = n_cells.x;
     const int m = n_cells.y;
@@ -314,11 +313,33 @@ void MapGrid::updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_ma
             if (tiles[cell_index] == TileType::WALL)
             {
                 wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
-                walls_drawable_.push_back(wall_rect);
+                // walls_drawable_.push_back(wall_rect);
             }
         }
     }
 }
+
+
+void MapGrid::changeToWater(sf::Vector2i n_first, sf::Vector2i n_max)
+{
+
+    for (int dj = 0; dj < n_max.y - 1; ++dj)
+    {
+        for (int di = 0; di < n_max.x - 1; ++di)
+        {
+            const auto i = n_first.x + di;
+            const auto j = n_first.y + dj;
+            if (i >= n_cells_.x - 1 or j >= n_cells_.y - 1)
+            {
+                continue;
+            };
+            const auto cell_index = j * n_cells_.x + i;
+
+            tiles.at(cell_index)= TileType::WATER;   
+        }
+    }
+}
+
 
 void MapGrid::updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_max)
 {
@@ -399,7 +420,7 @@ void MapGrid::updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_m
         }
     }
 
-    // map_texture.clear(sf::Color::Transparent);
+    //map_texture.clear(sf::Color::Transparent);
 
     for (int dj = 0; dj < n_max.y - 1; ++dj)
     {
@@ -416,8 +437,8 @@ void MapGrid::updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_m
             {
                 wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
                 wall_rect.setFillColor(sf::Color::Red);
-                wall_rect.setScale({5, 5});
-                walls_drawable_.push_back(wall_rect);
+                // wall_rect.setScale({5, 5});
+                // walls_drawable_.push_back(wall_rect);
                 // map_texture.draw(wall_rect); // or any other drawable
             }
         }
@@ -497,7 +518,7 @@ void MapGrid::updateBoundaryTypes2()
 void MapGrid::sawOffCorners()
 {
 
-    walls_drawable_.clear();
+    // walls_drawable_.clear();
 
     for (int j = 1; j < n_cells_.y - 1; ++j)
     {
@@ -587,7 +608,6 @@ void MapGrid::updateTexture(){
             
             
             sf::ConvexShape* shape = nullptr;
-
             switch (tiles2[cell_index].type)
             {
             case WallType::DLTRIANGLE:
@@ -609,7 +629,8 @@ void MapGrid::updateTexture(){
             if (shape)
             {
                 shape->setPosition(i * cell_size_.x, j * cell_size_.y);
-                map_texture.draw(*shape);
+                //shape->initialize();
+                shape->draw(map_texture);
             }
         
         }
@@ -838,18 +859,18 @@ Building &Building::operator=(const Building &b)
     this->edges = b.edges;
     n = b.n;
     m = b.m;
-    contour = b.contour;
+    // contour = b.contour;
     return *this;
 }
 
-sf::Vector2i Building::calcCenter() const
+sf::Vector2f Building::calcCenter() const
 {
-    sf::Vector2i center;
+    sf::Vector2f center;
     for (int i = 0; i < 8; ++i)
     {
-        center += edges[i].from;
+        center += asFloat(edges[i].from);
     }
-    return center / 8;
+    return center / 8.f;
 }
 
 void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f cell_size)
@@ -894,14 +915,67 @@ void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f ce
     edges[7].t = {1 / sqrt2, -1 / sqrt2};
     edges[7].l = diagonal_lenght;
 
-    contour.setPointCount(8);
-    contour.setFillColor(sf::Color::Red);
+    // contour.setPointCount(8);
+    // contour.setFillColor(sf::Color::Red);
     for (int i = 0; i < 8; ++i)
     {
         edges[i].from *= static_cast<int>(cell_size.x);
-        contour.setPoint(i, static_cast<sf::Vector2f>(edges[i].from));
+        // contour.setPoint(i, static_cast<sf::Vector2f>(edges[i].from));
     }
 }
+
+
+void Building::intitializeEdges2(sf::Vector2i center_cell_coords, sf::Vector2f cell_size)
+{
+    const auto up_left_cell_x = center_cell_coords.x - n / 2;
+    const auto up_left_cell_y = center_cell_coords.y - m / 2;
+
+    const auto wtf_x = (n - horizontal_line_length) / 2;
+    const auto wtf_y = (m - vertical_line_length) / 2;
+    const float sqrt2 = M_SQRT2;
+    const float diagonal_lenght = std::sqrt(wtf_x * wtf_x + wtf_y * wtf_y) * cell_size.x;
+
+    edges[0].from = {(up_left_cell_x + wtf_x), up_left_cell_y};
+    edges[0].t = {1, 0};
+    edges[0].l = (n - 2 * wtf_x) * cell_size.x;
+
+    edges[1].from = {(up_left_cell_x + n - wtf_x), up_left_cell_y};
+    edges[1].t = {1 / sqrt2, 1 / sqrt2};
+    edges[1].l = diagonal_lenght;
+
+    edges[2].from = {(up_left_cell_x + n), up_left_cell_y + wtf_y};
+    edges[2].t = {0, 1};
+    edges[2].l = (m - 2 * wtf_y) * cell_size.y;
+
+    edges[3].from = {up_left_cell_x + n, up_left_cell_y + wtf_y + vertical_line_length};
+    edges[3].t = {-1 / sqrt2, 1 / sqrt2};
+    edges[3].l = diagonal_lenght;
+
+    edges[4].from = {up_left_cell_x + wtf_x + horizontal_line_length, up_left_cell_y + m};
+    edges[4].t = {-1, 0};
+    edges[4].l = (n - 2 * wtf_x) * cell_size.x;
+
+    edges[5].from = {up_left_cell_x + wtf_x, up_left_cell_y + m};
+    edges[5].t = {-1 / sqrt2, -1 / sqrt2};
+    edges[5].l = diagonal_lenght;
+
+    edges[6].from = {up_left_cell_x, up_left_cell_y + wtf_y + vertical_line_length};
+    edges[6].t = {0, -1};
+    edges[6].l = (m - 2 * wtf_y) * cell_size.x;
+
+    edges[7].from = {up_left_cell_x, up_left_cell_y + wtf_y};
+    edges[7].t = {1 / sqrt2, -1 / sqrt2};
+    edges[7].l = diagonal_lenght;
+
+    // contour.setPointCount(8);
+    // contour.setFillColor(sf::Color::Red);
+    for (int i = 0; i < 8; ++i)
+    {
+        edges[i].from *= static_cast<int>(cell_size.x);
+        // contour.setPoint(i, static_cast<sf::Vector2f>(edges[i].from));
+    }
+}
+
 
 void MapGrid::extractVerticesForDrawing2(const Triangulation &cdt, const Edges &edge_lord)
 {
@@ -967,7 +1041,8 @@ void MapGrid::extractVerticesForDrawing(Triangulation &cdt, std::vector<TriInd> 
         }
     }
     std::cout << walls_vertices_.getVertexCount() << "\n";
-    walls_drawable_.clear();
+    // walls_drawable_.clear();
+    updateTexture();
 };
 
 void MapGrid::extractEdgesFromTilesV2(Triangulation &cdt)
@@ -1235,13 +1310,14 @@ void MapGrid::extractEdgesFromTilesV2(Triangulation &cdt)
     //     cdt.insertVertex(p_edges_->vertices_[v_ind]);
     // }
 
+    auto& wtf = p_edges_->edges2_;
     for (const auto &edge : p_edges_->edges2_)
     {
         cdt.insertConstraint(edge);
     }
 }
 
-void MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation &cdt)
+bool MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation &cdt)
 {
     auto center_cell_coords = cellCoords(building_center);
     auto lower_left_cell_coords = center_cell_coords - building_size / 2;
@@ -1262,60 +1338,61 @@ void MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_
         }
     }
 
-    if (all_cells_on_ground)
+    if (!all_cells_on_ground)
     {
-        for (int j = 0; j < building_size.y; ++j)
+        return false;
+    }
+    for (int j = 0; j < building_size.y; ++j)
+    {
+        for (int i = 0; i < building_size.x; ++i)
         {
-            for (int i = 0; i < building_size.x; ++i)
-            {
-                auto i_building = center_cell_coords.x - building_size.x / 2 + i;
-                auto j_building = center_cell_coords.y - building_size.y / 2 + j;
-                auto cell_index = n_cells_.x * j_building + i_building;
-                tiles[cell_index] = TileType::BUILDING;
-                cell2building_ind_[cell_index] = buildings_.size();
+            auto i_building = center_cell_coords.x - building_size.x / 2 + i;
+            auto j_building = center_cell_coords.y - building_size.y / 2 + j;
+            auto cell_index = n_cells_.x * j_building + i_building;
+            tiles[cell_index] = TileType::BUILDING;
+            cell2building_ind_[cell_index] = buildings_.size();
 
-                if (j == 0)
+            if (j == 0)
+            {
+                grid2walltype[cell_index] = WallType::SQUAREUP;
+                if (i == 0)
                 {
-                    grid2walltype[cell_index] = WallType::SQUAREUP;
-                    if (i == 0)
-                    {
-                        grid2walltype[cell_index] = WallType::ULTRIANGLE;
-                    }
-                    else if (i == building_size.x - 1)
-                    {
-                        grid2walltype[cell_index] = WallType::URTRIANGLE;
-                    }
+                    grid2walltype[cell_index] = WallType::ULTRIANGLE;
                 }
-                else if (j == building_size.y - 1)
+                else if (i == building_size.x - 1)
                 {
-                    grid2walltype[cell_index] = WallType::SQUAREDOWN;
-                    if (i == 0)
-                    {
-                        grid2walltype[cell_index] = WallType::DLTRIANGLE;
-                    }
-                    else if (i == building_size.x - 1)
-                    {
-                        grid2walltype[cell_index] = WallType::DRTRIANGLE;
-                    }
-                }
-                if (i == 0 and (j > 0 and j < building_size.y - 1))
-                {
-                    grid2walltype[cell_index] = WallType::SQUARELEFT;
-                }
-                else if (i == building_size.x - 1 and (j > 0 and j < building_size.y - 1))
-                {
-                    grid2walltype[cell_index] = WallType::SQUARERIGHT;
+                    grid2walltype[cell_index] = WallType::URTRIANGLE;
                 }
             }
+            else if (j == building_size.y - 1)
+            {
+                grid2walltype[cell_index] = WallType::SQUAREDOWN;
+                if (i == 0)
+                {
+                    grid2walltype[cell_index] = WallType::DLTRIANGLE;
+                }
+                else if (i == building_size.x - 1)
+                {
+                    grid2walltype[cell_index] = WallType::DRTRIANGLE;
+                }
+            }
+            if (i == 0 and (j > 0 and j < building_size.y - 1))
+            {
+                grid2walltype[cell_index] = WallType::SQUARELEFT;
+            }
+            else if (i == building_size.x - 1 and (j > 0 and j < building_size.y - 1))
+            {
+                grid2walltype[cell_index] = WallType::SQUARERIGHT;
+            }
         }
-
-        //        updateBoundaryTypes();
-        auto new_building = addBuildingEdgesToTriangulation(building_center, building_size, cdt);
-        assert(cdt.triangulationIsConsistent());
-        new_building.contour.setTexture(&grass);
-        buildings_.push_back(new_building);
-        // map_texture.draw(buildings.m_vertices);
     }
+
+    //        updateBoundaryTypes();
+    auto new_building = addBuildingEdgesToTriangulation(building_center, building_size, cdt);
+    assert(cdt.triangulationIsConsistent());
+    buildings_.push_back(new_building);
+    // map_texture.draw(buildings.m_vertices);
+    return true;
 }
 
 Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size,
@@ -1328,17 +1405,31 @@ Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, 
     b.n = building_size.x;
     b.m = building_size.y;
     b.intitializeEdges(center_cell_coords, cell_size_);
-    auto edge_grid_index_up = lower_left_cell_coords.y;
-    auto edge_grid_index_down = lower_left_cell_coords.y + building_size.y;
-    auto edge_grid_index_left = lower_left_cell_coords.x;
-    auto edge_grid_index_right = lower_left_cell_coords.x + building_size.x;
-    auto edge_grid_index_ur =
-        (lower_left_cell_coords.x + building_size.x - 1) - (lower_left_cell_coords.y) + n_cells_.y - 1;
-    auto edge_grid_index_ul = (lower_left_cell_coords.x) + (lower_left_cell_coords.y);
-    auto edge_grid_index_dr =
-        (lower_left_cell_coords.x + building_size.x - 1) + (lower_left_cell_coords.y + building_size.y - 1);
-    auto edge_grid_index_dl =
-        (lower_left_cell_coords.x) - (lower_left_cell_coords.y + building_size.y - 1) + n_cells_.y - 1;
+
+    const auto ix7 = cellCoords(b.edges.at(7).from + static_cast<sf::Vector2i>(cell_size_/2.f)).x;
+    const auto iy7 = cellCoords(b.edges.at(7).from + static_cast<sf::Vector2i>(cell_size_/2.f)).y;
+    const auto idiag_lu7 = ix7 + iy7 - 1;
+
+    const auto ix3 = cellCoords(b.edges.at(3).from + static_cast<sf::Vector2i>(cell_size_/2.f)).x;
+    const auto iy3 = cellCoords(b.edges.at(3).from + static_cast<sf::Vector2i>(cell_size_/2.f)).y;
+    const auto idiag_lu3 = ix3 + iy3;
+
+    const auto ix5 = cellCoords(b.edges.at(5).from + static_cast<sf::Vector2i>(cell_size_/2.f)).x;
+    const auto iy5 = cellCoords(b.edges.at(5).from + static_cast<sf::Vector2i>(cell_size_/2.f)).y;
+    const auto idiag_lu5 = ix5 - iy5 + n_cells_.y - 1;
+
+    const auto ix1 = cellCoords(b.edges.at(1).from + static_cast<sf::Vector2i>(cell_size_/2.f)).x;
+    const auto iy1 = cellCoords(b.edges.at(1).from + static_cast<sf::Vector2i>(cell_size_/2.f)).y;
+    const auto idiag_lu1 = ix1 - iy1 + n_cells_.y - 1;
+
+    auto edge_grid_index_up =  center_cell_coords.y - b.m/2;
+    auto edge_grid_index_down = edge_grid_index_up + building_size.y;
+    auto edge_grid_index_left = center_cell_coords.x - b.n/2;
+    auto edge_grid_index_right = edge_grid_index_left + building_size.x;
+    auto edge_grid_index_ur = idiag_lu1;
+    auto edge_grid_index_ul = idiag_lu7;
+    auto edge_grid_index_dr = idiag_lu3;
+    auto edge_grid_index_dl = idiag_lu5;
     std::array<int, 4> edge_grid_inds = {edge_grid_index_up, edge_grid_index_right, edge_grid_index_down,
                                          edge_grid_index_left};
     std::array<int, 4> edge_grid_inds_diag = {edge_grid_index_ur, edge_grid_index_dr, edge_grid_index_dl,
@@ -1702,43 +1793,43 @@ std::vector<sf::Vector2f> MapGrid::generateRandomWalls(sf::Vector2f center, sf::
     return function_values;
 }
 
-void MapGrid::drawProposedWalls(sf::Vector2f center, sf::Vector2f max_coords,
-                                std::vector<sf::Vector2f> &function_values, const float width)
-{
+// void MapGrid::drawProposedWalls(sf::Vector2f center, sf::Vector2f max_coords,
+//                                 std::vector<sf::Vector2f> &function_values, const float width)
+// {
 
-    const auto center_cell_coords = cellCoords(center);
+//     const auto center_cell_coords = cellCoords(center);
 
-    const auto NPOINTS = function_values.size() / 2;
-    walls_drawable_.clear();
+//     const auto NPOINTS = function_values.size() / 2;
+//     // walls_drawable_.clear();
 
-    sf::ConvexShape wall_rect;
+//     sf::ConvexShape wall_rect;
 
-    const auto i_max = static_cast<int>(2 * max_coords.x / cell_size_.x);
-    const auto j_max = static_cast<int>(max_coords.y / cell_size_.y);
-    for (int i = 0; i < i_max; ++i)
-    {
-        for (int j = 0; j < j_max; ++j)
-        {
-            auto i_building = center_cell_coords.x - i_max / 2 + i;
-            auto j_building = center_cell_coords.y - j_max / 2 + j;
-            if (i_building <= 2 or i_building >= n_cells_.x - 3 or j_building <= 2 or j_building >= n_cells_.y - 3)
-            {
-                continue;
-            }
-            const sf::Vector2f r = {i_building * cell_size_.x - cell_size_.x / 2.f,
-                                    j_building * cell_size_.y - cell_size_.y / 2.f};
-            const sf::Vector2f r_reduced = {(r.x - center.x) / (0.5f * max_coords.x),
-                                            (r.y - center.y) / (0.5f * max_coords.y)};
+//     const auto i_max = static_cast<int>(2 * max_coords.x / cell_size_.x);
+//     const auto j_max = static_cast<int>(max_coords.y / cell_size_.y);
+//     for (int i = 0; i < i_max; ++i)
+//     {
+//         for (int j = 0; j < j_max; ++j)
+//         {
+//             auto i_building = center_cell_coords.x - i_max / 2 + i;
+//             auto j_building = center_cell_coords.y - j_max / 2 + j;
+//             if (i_building <= 2 or i_building >= n_cells_.x - 3 or j_building <= 2 or j_building >= n_cells_.y - 3)
+//             {
+//                 continue;
+//             }
+//             const sf::Vector2f r = {i_building * cell_size_.x - cell_size_.x / 2.f,
+//                                     j_building * cell_size_.y - cell_size_.y / 2.f};
+//             const sf::Vector2f r_reduced = {(r.x - center.x) / (0.5f * max_coords.x),
+//                                             (r.y - center.y) / (0.5f * max_coords.y)};
 
-            auto cell_index = n_cells_.x * j_building + i_building;
-            if (is_in(r, function_values[0].x, function_values[NPOINTS - 1].x, NPOINTS, function_values))
-            {
-                wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
-                walls_drawable_.push_back(wall_rect);
-            }
-        }
-    }
-}
+//             auto cell_index = n_cells_.x * j_building + i_building;
+//             if (is_in(r, function_values[0].x, function_values[NPOINTS - 1].x, NPOINTS, function_values))
+//             {
+//                 wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
+//                 // walls_drawable_.push_back(wall_rect);
+//             }
+//         }
+//     }
+// }
 
 std::vector<sf::Vector2f> MapGrid::setWallsInFunction(sf::Vector2f center, sf::Vector2f max_coords,
                                                       std::vector<sf::Vector2f> &function_values, const float width)
@@ -1843,7 +1934,7 @@ sf::Vector2i MapGrid::drawProposedBuilding(sf::RenderWindow &window, sf::Vector2
             {
                 rect.setFillColor(sf::Color::Red);
             }
-            window.draw(rect);
+            rect.draw(window);
         }
     }
     return lower_left_cell_coords - building_size / 2;
@@ -1852,31 +1943,30 @@ sf::Vector2i MapGrid::drawProposedBuilding(sf::RenderWindow &window, sf::Vector2
 void MapGrid::setSprites()
 {
 
-    for (auto &building : buildings_)
-    {
-        building.contour.setTexture(&grass);
-        building.contour.setFillColor({15, 135, 251, 120});
-    }
-    for (auto &wall_tile : walls_drawable_)
-    {
-        wall_tile.setTexture(&grass);
-    }
+    // for (auto &building : buildings_)
+    // {
+    //     building.contour.setTexture(&grass);
+    //     building.contour.setFillColor({15, 135, 251, 120});
+    // }
+    // for (auto &wall_tile : walls_drawable_)
+    // {
+    //     wall_tile.setTexture(&grass);
+    // }
 }
 
 void MapGrid::draw(sf::RenderWindow &window)
 {
 
-    for (const auto &building : buildings_)
-    {
-        // window.draw(building.contour);
-    }
-    // const auto& map_text = map_texture.getTexture();
-    // map_rect.setTexture(&map_text);
 
-    // map_rect.setFillColor(sf::Color::Black);
+    auto& map_text = map_texture.texture_handle;
+    
+    map_rect.setTexture(map_text);
 
-    window.draw(map_rect);
-    // window.draw(walls_vertices_);
+    map_rect.setFillColor(sf::Color::Transparent);
+
+    //wall_rect.draw(window);
+    map_rect.draw(window);
+    // walls_vertices_.draw(window);
     // for (const auto &wall_tile : walls_drawable_)
     // {
     //     window.draw(wall_tile);

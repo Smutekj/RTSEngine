@@ -65,6 +65,12 @@
         "iomanip": "cpp",
         "semaphore": "cpp",
         "typeindex": "cpp",
-        "projectilesystem cpp": "cpp"
+        "projectilesystem cpp": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "any": "cpp",
+        "cstring": "cpp",
+        "variant": "cpp",
+        "queue": "cpp"
     }
 }

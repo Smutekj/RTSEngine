@@ -1,27 +1,43 @@
 #ifndef BOIDS_MAPGRID_H
 #define BOIDS_MAPGRID_H
 
-#include <SFML/Graphics.hpp>
-#include <iostream>
-#include <cassert>
-#include <unordered_map>
-#include "Grid.h"
+#include "Graphics/RenderTexture.hpp"
+
+#include "Graphics/VertexArray.hpp"
+#include "Graphics/RectangleShape.hpp"
+#include "Graphics/ConvexShape.hpp"
+
+#include "Utils/Grid.h"
 #include "core.h"
+
 #include "EdgesFinder1D.h"
 #include "Edges.h"
 
+#include <iostream>
+#include <cassert>
+#include <unordered_map>
+
 typedef int BuildingInd;
+
+namespace Mesh{
+class Triangulation;
+}
+
+struct Graph;
 
 struct Building {
 
     std::array<Edge, 8> edges;
     std::array<int, 8> edge_grid_inds;
-    int n = 3;
-    int m = 3;
-    int horizontal_line_length = 6;
-    int vertical_line_length = 6;
+    int n = 4;
+    int m = 4;
+    int horizontal_line_length = 2;
+    int vertical_line_length = 2;
+    u_int16_t graphics_id = 0;
+    Graph* p_graph = nullptr;
+    int instance_id = -1;
 
-    sf::ConvexShape contour;
+    
 
     explicit Building() = default;
     Building(const sf::Vector2i& center_cell_coords, const sf::Vector2f& cell_size) {
@@ -30,89 +46,16 @@ struct Building {
     ~Building() = default;
 
     Building& operator=(const Building& b) ;
-    sf::Vector2i calcCenter() const;
+    sf::Vector2f calcCenter() const;
     void intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f cell_size);
+    void intitializeEdges2(sf::Vector2i center_cell_coords, sf::Vector2f cell_size);
 };
 
-
-
-struct TileData{
-
-    sf::Vector2i pos;
-    sf::Vector2f orient;
-    std::string name;
-};
-
-class Buildings {
-  public:
-    bool load(const std::string& tileset, const std::vector<Building>& buildings) {
-
-        const auto n_buildings = buildings.size();
-        // resize the vertex array to fit the level size
-        m_vertices.setPrimitiveType(sf::Triangles);
-        m_vertices.resize(n_buildings * 6 * 3);
-
-        // populate the vertex array, with two triangles per tile
-        for (unsigned int i = 0; i < n_buildings; ++i) {
-            sf::Vertex* triangles = &m_vertices[(i)*6 * 3]; // 6 triangles per building 3 vertices per triangle
-            const auto& edges = buildings[i].edges;
-            for (int k = 0; k < 18; ++k) {
-                triangles[k].color = sf::Color::Red;
-            }
-            // get a pointer to the triangles' vertices of the current tile
-            // define the 6 corners of the two triangles
-            triangles[0].position = sf::Vector2f(edges[0].from);
-            triangles[1].position = sf::Vector2f(edges[1].from);
-            triangles[2].position = sf::Vector2f(edges[5].from);
-
-            triangles[3].position = sf::Vector2f(edges[1].from);
-            triangles[4].position = sf::Vector2f(edges[5].from);
-            triangles[5].position = sf::Vector2f(edges[4].from);
-
-            triangles[6].position = sf::Vector2f(edges[1].from);
-            triangles[7].position = sf::Vector2f(edges[2].from);
-            triangles[8].position = sf::Vector2f(edges[4].from);
-
-            triangles[9].position = sf::Vector2f(edges[2].from);
-            triangles[10].position = sf::Vector2f(edges[3].from);
-            triangles[11].position = sf::Vector2f(edges[4].from);
-
-            triangles[12].position = sf::Vector2f(edges[0].from);
-            triangles[13].position = sf::Vector2f(edges[7].from);
-            triangles[14].position = sf::Vector2f(edges[6].from);
-
-            triangles[15].position = sf::Vector2f(edges[6].from);
-            triangles[16].position = sf::Vector2f(edges[5].from);
-            triangles[17].position = sf::Vector2f(edges[0].from);
-        }
-
-        return true;
-    }
-
-    virtual void draw(sf::RenderWindow& target) const {
-        // apply the transform
-        // states.transform *= getTransform();
-
-        // apply the tileset texture
-        // states.texture = &m_tileset;
-
-        // draw the vertex array
-        target.draw(m_vertices);
-    }
-
-  private:
-    sf::VertexArray m_vertices;
-    sf::Texture m_tileset;
-};
-
-namespace Mesh{
-class Triangulation;
-}
 
 class MapGrid : public Grid {
 
   public:
-    enum class TileType { GROUND, BUILDING, WALL };
+    enum class TileType { GROUND, WATER, BUILDING, WALL };
 
     struct VertexHash {
         std::size_t operator()(const Vertex& v) const { return std::hash<int>()(v.x) ^ std::hash<int>()(v.y); }
@@ -135,7 +78,7 @@ class MapGrid : public Grid {
 
     typedef int GridIndex;
 
-    std::vector<sf::ConvexShape> walls_drawable_;
+    // std::vector<sf::ConvexShape> walls_drawable_;
 
     struct Tile {
         WallType type = WallType::NONE;
@@ -148,7 +91,7 @@ class MapGrid : public Grid {
     std::vector<Tile> tiles2;
 
     sf::RectangleShape rect;
-    sf::Texture grass;
+    // sf::Texture grass;
 
     sf::ConvexShape wall_rect;
     sf::ConvexShape ur_triangle;
@@ -197,6 +140,7 @@ class MapGrid : public Grid {
     void updateBoundaryTypes2();
     void updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_max);
     void updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_max);
+    void changeToWater(sf::Vector2i n_first, sf::Vector2i n_max);
     void extractEdgesFromTiles(Triangulation& cdt);
     void extractEdgesFromTilesV2(Triangulation& cdt);
     void extractVerticesForDrawing(Triangulation& cdt, std::vector<TriInd>& tri_ind2component);
@@ -204,7 +148,7 @@ class MapGrid : public Grid {
 
 
     void buildWall(sf::Vector2f wall_center, sf::Vector2i square_size);
-    void buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation& cdt);
+    bool buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation& cdt);
 
     void addAllStaticEdgesToTriangulation(Triangulation& cdt);
     void addAllBuildingsToTriangulation(Triangulation& cdt);
@@ -263,11 +207,85 @@ class MapGrid : public Grid {
         //! write to texture
         map_texture.display();
     }
-    void draw(sf::RenderWindow& window);
+
+    void draw(sf::RenderWindow &window);
 
 private:
     sf::RenderTexture map_texture;
     sf::RectangleShape map_rect;
+
 };
+
+
+
+struct TileData{
+
+    sf::Vector2i pos;
+    sf::Vector2f orient;
+    std::string name;
+};
+
+class Buildings {
+  public:
+    bool load(const std::string& tileset, const std::vector<Building>& buildings) {
+
+        const auto n_buildings = buildings.size();
+        // resize the vertex array to fit the level size
+        m_vertices.setPrimitiveType(sf::Triangles);
+        m_vertices.resize(n_buildings * 6 * 3);
+
+        // populate the vertex array, with two triangles per tile
+        for (unsigned int i = 0; i < n_buildings; ++i) {
+            sf::Vertex* triangles = &m_vertices[(i)*6 * 3]; // 6 triangles per building 3 vertices per triangle
+            const auto& edges = buildings[i].edges;
+            for (int k = 0; k < 18; ++k) {
+                triangles[k].color = sf::Color::Red;
+            }
+            // get a pointer to the triangles' vertices of the current tile
+            // define the 6 corners of the two triangles
+            triangles[0].position = sf::Vector2f(edges[0].from);
+            triangles[1].position = sf::Vector2f(edges[1].from);
+            triangles[2].position = sf::Vector2f(edges[5].from);
+
+            triangles[3].position = sf::Vector2f(edges[1].from);
+            triangles[4].position = sf::Vector2f(edges[5].from);
+            triangles[5].position = sf::Vector2f(edges[4].from);
+
+            triangles[6].position = sf::Vector2f(edges[1].from);
+            triangles[7].position = sf::Vector2f(edges[2].from);
+            triangles[8].position = sf::Vector2f(edges[4].from);
+
+            triangles[9].position = sf::Vector2f(edges[2].from);
+            triangles[10].position = sf::Vector2f(edges[3].from);
+            triangles[11].position = sf::Vector2f(edges[4].from);
+
+            triangles[12].position = sf::Vector2f(edges[0].from);
+            triangles[13].position = sf::Vector2f(edges[7].from);
+            triangles[14].position = sf::Vector2f(edges[6].from);
+
+            triangles[15].position = sf::Vector2f(edges[6].from);
+            triangles[16].position = sf::Vector2f(edges[5].from);
+            triangles[17].position = sf::Vector2f(edges[0].from);
+        }
+
+        return true;
+    }
+
+    // void draw(sf::RenderWindow& target) const {
+        // apply the transform
+        // states.transform *= getTransform();
+
+        // apply the tileset texture
+        // states.texture = &m_tileset;
+
+        // draw the vertex array
+        // target.draw(m_vertices);
+    // }
+
+  private:
+    sf::VertexArray m_vertices;
+    // sf::Texture m_tileset;
+};
+
 
 #endif // BOIDS_MAPGRID_H

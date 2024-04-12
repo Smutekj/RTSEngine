@@ -3,7 +3,7 @@
 #include <queue>
 
 #include "../core.h"
-#include "../Triangulation.h"
+#include "Triangulation.h"
 
 
 struct Portal {

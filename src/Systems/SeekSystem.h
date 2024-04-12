@@ -2,8 +2,9 @@
 
 #include "../ECS.h"
 #include "../CommandGroupManager.h"
-#include "../NeighbourSearcherContext.h"
 #include "../Settings.h"
+
+#include "../Utils/NeighbourSearcherContext.h"
 
 class PathFinder2;
 class Triangulation;
@@ -18,7 +19,7 @@ struct SeekSystem : System2
 
     const AcosTable<1000> s_angle_calculator;
 
-    CommandGroupManager commander_groups_;
+    CommandGroupManager2 commander_groups_;
 
     std::array<SharedData, N_MAX_ENTITIES> *master_data_;
 
@@ -42,16 +43,21 @@ public:
     SeekSystem(ComponentID id);
     virtual ~SeekSystem() = default;
 
-    void issuePaths(std::vector<int> &entity_inds, sf::Vector2f path_end);
+    void issuePaths(const std::vector<int> &entity_inds, sf::Vector2f path_end);
+    void issuePaths2(const std::vector<int> &entity_inds, sf::Vector2f path_end);
+
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
     virtual void update() override;
 
-    virtual void draw(sf::RenderTarget &target) override;
+    // virtual void draw(sf::RenderTarget &target) override;
 
     virtual void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &new_data,
                           const std::vector<Entity> &active_entity_inds) override ;
 
     virtual void communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shared_data) const override;
+
+    void onComponentRemoval(int comp_ind);
 
 private:
     //! \brief stops moving towards seek target and removes agent from his command group

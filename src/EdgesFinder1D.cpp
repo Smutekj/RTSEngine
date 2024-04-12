@@ -1,6 +1,6 @@
 #include "EdgesFinder1D.h"
 #include "Edges.h"
-#include "Grid.h"
+#include "Utils/Grid.h"
 
 EdgesFinder1D::EdgesFinder1D(int max_n_edges, Orientation dir, Grid& grid, std::vector<Vertex>& vertices,
                              std::vector<EdgeVInd>& edge_inds, std::vector<Edgef>& edges)

@@ -11,11 +11,14 @@
 
 #include "core.h"
 #include "Geometry.h"
-#include "Grid.h"
 #include "Systems/Components.h"
+#include "Utils/Grid.h"
+#include "Utils/GayVector.h"
 
 constexpr float dt = 1. / 60.f;
 constexpr int N_MAX_ENTITIES = 10000;
+
+
 
 
 // struct Observatory{
@@ -136,6 +139,8 @@ struct SharedData
     float size = RHARD;
     int player_ind = 0;
     HealthComponent health;
+    sf::Vector2f acc = {0,0};
+    sf::Vector2f target = {-1, -1};
 };
 
 class System2
@@ -168,9 +173,9 @@ public:
     }
 
     template <ComponentID id, typename CompType>
-    CompType &getComponent(const Entity &e) const
+    const CompType &getComponent(const Entity &e) const
     {
-        const auto &components = static_cast<ComponentArray<CompType> &>(*p_comps_.get());
+        const auto &components = static_cast<ComponentArray<CompType> &>(*p_comps_.get()).components_;
         return components.at(entity2compvec_ind_.at(e.ind));
     }
 
@@ -221,7 +226,7 @@ public:
     }
 
     //! \brief should tell RenderModule how to render stuff
-    virtual void draw(sf::RenderTarget &target) = 0;
+    // virtual void draw() = 0;
     virtual void update() = 0;
     virtual void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &new_data, const std::vector<Entity> &active_entity_inds) = 0;
     virtual void communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shared_data) const = 0;
@@ -354,6 +359,8 @@ struct ECSystem
     std::vector<int> active_entity_inds_;
     std::vector<Entity> active_entities_;
     std::array<int, N_MAX_ENTITIES> entity2ind_in_active_inds_;
+    
+    GayVectorI<N_MAX_ENTITIES> active_entities2_;
 
 public:
     std::array<SharedData, N_MAX_ENTITIES> entity2shared_data;
@@ -419,13 +426,13 @@ public:
 
     void update();
 
-    void draw(sf::RenderWindow &window)
-    {
-        for (auto &system : systems2_)
-        {
-            system->draw(window);
-        }
-    }
+    // void draw(sf::RenderWindow &window)
+    // {
+    //     for (auto &system : systems2_)
+    //     {
+    //         system->draw(window);
+    //     }
+    // }
 
     void setMoveState(MoveState state, const std::vector<int>& selection){
         for(auto entity_ind : selection){

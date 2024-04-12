@@ -24,7 +24,7 @@ struct Weapon
     float time_since_shooting = 60;
     float reload_time = 60;
     float damage = 1;
-    float range = 5*RHARD;
+    float range = 50;
     int proj_factory_ind = -1;
 
     Weapon(float damage, float range, float reload_time, int proj_factory_ind)
@@ -90,7 +90,7 @@ struct PhysicsComponent : Component<ComponentID::PHYSICS>
     MoveState state = MoveState::STANDING;
     int player_ind;
     sf::Vector2f inertia_vel = {0.f, 0.f};
-    float max_speed = 50.f;
+    float max_speed = 25.f;
 };
 
 struct PathFinderComponent : Component<ComponentID::PATHFINDING>
@@ -112,11 +112,13 @@ struct PathFinderComponent : Component<ComponentID::PATHFINDING>
     int n_steps_since_all_in_front_standing = 0;
     float radius = RHARD;
     float max_speed = 50.f;
-    float turn_rate = 15; // degrees / frame 
+    float turn_rate = 5; // degrees / frame 
     float desired_angle = 0; // degrees
     bool needs_update = true;
 
 };
+
+struct Graph;
 
 struct GraphicsComponent : Component<ComponentID::GRAPHICS>
 {
@@ -124,7 +126,9 @@ struct GraphicsComponent : Component<ComponentID::GRAPHICS>
     int graphics_ind;
     int sprite_sheet_ind;
     int player_ind = 0;
+    int instance_ind = -1;
     HealthComponent* p_shared_data = nullptr;
+    Graph* p_graph = nullptr;
 };
 
 template <class CompType>

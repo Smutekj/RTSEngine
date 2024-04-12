@@ -4,8 +4,12 @@
 #include <array>
 #include <chrono>
 #include <numbers>
+#include <vector>
+#include <algorithm>
 
-#include "SFML/Graphics.hpp"
+#include "Utils/Vector.hpp"
+#include "Graphics/Color.hpp"
+// #include "SFML/Graphics.hpp"
 
 // #define and && //! for reasons, I have yet to understand, some compilers/versions of c++ do not have and :(
 // #define or ||  //! I like using these so I gotta define them myself
@@ -37,9 +41,11 @@
 typedef uint32_t u_int_32_t;
 typedef uint16_t u_int_16_t;
 
+
+
 #pragma once
 
-constexpr int N_MAX_NAVIGABLE_BOIDS = 4000;
+constexpr int N_MAX_NAVIGABLE_BOIDS = 5000;
 constexpr int N_MAX_NEIGHBOURS = 500;
 constexpr int  MAX_N_AGENTS_IN_PHYSICS_CELLS = 500;
 

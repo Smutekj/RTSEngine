@@ -21,7 +21,7 @@ struct HealthSystem : System2{
         auto &comp_array = static_cast<CompArray&>(*p_comps_);
     }
 
-    void draw(sf::RenderTarget& target){}
+    // void draw(sf::RenderTarget& target){}
 
     void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES>& new_data, const std::vector<Entity>& active_entity_inds)
     {
@@ -42,6 +42,9 @@ struct HealthSystem : System2{
         }
     }
 
+    virtual void onComponentCreation(GraphicsComponent& comp){}
+
+
     void changeHealth(Entity e, float value) {
         auto compvec_ind = entity2compvec_ind_.at(e.ind);
         auto &comp = static_cast<CompArray&>(*p_comps_).components_.at(compvec_ind);
@@ -51,8 +54,6 @@ struct HealthSystem : System2{
         }
     }
 
-    private:
-     sf::VertexArray vertices_;
 };
 
 

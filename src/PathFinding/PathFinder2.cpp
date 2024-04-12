@@ -1,15 +1,17 @@
 #include <future>
 #include <thread>
 #include <chrono>
+#include <fstream>
 
 #include "PathFinder2.h"
-#include "../Triangulation.h"
+#include "Triangulation.h"
 
 PathFinder2::PathFinder2(Triangulation *cdt)
     : cdt_(cdt)
 {
     p_rtg_ = std::make_shared<ReducedTriangulationGraph>();
     update_has_been_issued_.resize(N_MAX_NAVIGABLE_BOIDS, false);
+    entity2update_group_ind_.fill(-1);
 }
 
 //! \brief checks if reduced2tri_ind and tri_ind2reduced mappings are consistent with each other
@@ -80,19 +82,19 @@ void PathFinder2::update()
     reduced_vertex2astar_data_.resize(p_rtg_->reduced_vertices.size() + 2);
 }
 
-void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps,
-                              const sf::Int64 available_time)
+void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::array<int, N_MAX_ENTITIES> &entity2compvec_ind,
+                              const int available_time)
 {
 
-    sf::Clock time;
+    // sf::Clock time;
     const int n_threads = std::thread::hardware_concurrency() - 1;
     thread_status_.resize(n_threads, THREAD_STATUS::FREE);
 
-    std::function<int(const GroupPathData, int)> do_pathfinding = [this, &comps](const GroupPathData data, int thread_id)
+    std::function<int(const GroupPathData, int)> do_pathfinding = [this, &comps, &entity2compvec_ind](const GroupPathData data, int thread_id)
     {
         try
         {
-            doPathFinding(data.r_starts, data.r_end, comps, data.radius, data.inds_to_update, thread_id);
+            doPathFinding(data.r_starts, data.r_end, comps, entity2compvec_ind, data.radius, data.inds_to_update, thread_id);
         }
         catch (std::exception &e)
         {
@@ -102,6 +104,17 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps,
         return 1;
     };
 
+    //! check that each entity is there at most once
+    std::unordered_set<int> ents;
+    for (const auto &group : to_update_groups_)
+    {
+        for (auto ind : group.inds_to_update)
+        {
+            ents.insert(ind);
+            assert(ents.count(ind) <= 1);
+        }
+    }
+
     int thread_id = 0;
     const int last = to_update_groups_.size() - 1;
 
@@ -110,7 +123,7 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps,
         { return dist2(gpd1.r_end, gpd1.r_starts[0]) < dist2(gpd2.r_end, gpd2.r_starts[0]); });
     futures_.resize(n_threads);
 
-    sf::Clock clock;
+    // sf::Clock clock;
     int n_paths_found = 0;
     for (int i = last; i >= std::max(last + 1 - n_threads, 0); --i)
     {
@@ -122,17 +135,17 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps,
         futures_.at(thread_id) = std::async(std::launch::async, do_pathfinding, data, thread_id);
         thread_status_.at(thread_id) = THREAD_STATUS::RUNNING;
         n_paths_found++;
-        for (const auto &ind : data.inds_to_update)
+        for (const auto &entity_ind : data.inds_to_update)
         {
-            comps.at(ind).needs_update = true;
+            comps.at(entity2compvec_ind.at(entity_ind)).needs_update = true;
         }
         thread_id++;
         to_update_pq.pop();
     }
 
     bool all_threads_free = allThreadsFree(std::min(last + 1, n_threads));
-    auto run_time = clock.getElapsedTime().asMicroseconds();
-
+    // auto run_time = clock.getElapsedTime().asMicroseconds();
+    double run_time = 0;
     bool all_jobs_are_done = all_threads_free && to_update_pq.empty();
     bool time_has_run_out = run_time > available_time;
     //! search for queried paths on all available threads until time runs out or until we finish the job
@@ -168,7 +181,7 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps,
         all_threads_free = allThreadsFree(std::min(last + 1, n_threads));
         all_jobs_are_done = all_threads_free && to_update_pq.empty();
 
-        run_time = clock.getElapsedTime().asMicroseconds();
+        // run_time = clock.getElapsedTime().asMicroseconds();
         time_has_run_out = run_time > available_time;
     }
     to_update_groups_.resize(to_update_groups_.size() - n_paths_found);
@@ -199,7 +212,7 @@ bool PathFinder2::allThreadsFree(int last_thread_id)
             }
             catch (const std::exception &e)
             {
-                std::cout << "something got fucked at: "
+                std::cout << "YOU PROBABLY FORGOT TO CREATE TRIANGULATION, LOL: "
                           << "\"\nMessage: \"" << e.what() << "\"\n";
                 thread_status_.at(thread_id) = THREAD_STATUS::FAILED;
                 throw e;
@@ -213,23 +226,58 @@ bool PathFinder2::allThreadsFree(int last_thread_id)
     return all_threads_free;
 }
 
+
+
+void dumpFunnelToFile(const Funnel& funnel, float radius, std::string filename){
+    std::ofstream file(filename);
+    
+    for(const auto [r_left, r_right] : funnel){
+        file << r_left.x << " " << r_left.y << " " << r_right.x << " " << r_right.y << '\n';
+    }
+    file.close();
+}
+
+void dumpPathToFile(const std::deque<sf::Vector2f>& path, float radius, std::string filename){
+    std::ofstream file(filename);
+    
+    for(const auto r : path){
+        file << r.x << " " << r.y  << '\n';
+    }
+    file.close();
+}
+
+void dumpFunnelToFile2(const std::vector<Vertex>& r_lefts, const std::vector<Vertex>& r_rights, std::string filename){
+    std::ofstream file(filename);
+    
+    for( auto r_left : r_lefts){
+        file << r_left.x << " " << r_left.y << '\n';
+    }
+    file << "\n";
+
+    for( auto r_right : r_rights){
+        file << r_right.x << " " << r_right.y << '\n';
+    }
+
+    file.close();
+}
+
 //! \brief calls threads that will do path-finding of the issued pathfinding work
 //! \param comps components which have to contain a transform component
 //! \param available_time total time available for pathfinding
 //! \note  We use here the most recent coordinates ( \p r_coords )
 //! \note because the actual pathfinding does not have to be done in the same frame when the pathfinding was issued!
 void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
-                               const sf::Int64 available_time)
+                               const int available_time)
 {
 
-    sf::Clock time;
+    // sf::Clock time;
     const int n_threads = 1; // std::thread::hardware_concurrency();
     thread_status_.resize(n_threads, THREAD_STATUS::FREE);
     std::function<int(const GroupPathData, int)> do_pathfinding = [this, &comps](const GroupPathData data, int thread_id)
     {
         try
         {
-            doPathFinding(data.r_starts, data.r_end, comps, data.radius, data.inds_to_update, thread_id);
+            doPathFinding2(data.r_starts, data.r_end, comps, data.radius, data.inds_to_update, thread_id);
         }
         catch (std::exception &e)
         {
@@ -244,7 +292,7 @@ void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
         { return dist2(gpd1.r_end, gpd1.r_starts[0]) < dist2(gpd2.r_end, gpd2.r_starts[0]); });
     futures_.resize(n_threads);
 
-    sf::Clock clock;
+    // sf::Clock clock;
     int n_paths_found = 0;
     int thread_id = 0;
     const int last = to_update_groups_.size() - 1;
@@ -267,7 +315,7 @@ void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
     }
 
     bool all_threads_free = allThreadsFree(std::min(last + 1, n_threads));
-    auto run_time = clock.getElapsedTime().asMicroseconds();
+    auto run_time = 0.f;//clock.getElapsedTime().asMicroseconds();
 
     bool all_jobs_are_done = all_threads_free && to_update_pq.empty();
     bool time_has_run_out = run_time > available_time;
@@ -308,14 +356,11 @@ void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
             std::cout << "to_update_pq empty\n";
         }
 
-        run_time = clock.getElapsedTime().asMicroseconds();
+        // run_time = clock.getElapsedTime().asMicroseconds();
         time_has_run_out = run_time > available_time;
     }
     to_update_groups_.resize(to_update_groups_.size() - n_paths_found);
-    if (clock.getElapsedTime().asMicroseconds() > 1000)
-    {
-        std::cout << "pathfinding took: " << clock.getElapsedTime().asMicroseconds() << " us\n";
-    }
+
 }
 
 //! \brief sets relevant data relating to pathfinding of agent with index \p ind to controler \p bc
@@ -386,11 +431,54 @@ void PathFinder2::setPathOfAgent(PathFinderComponent &comp, sf::Vector2f r_end, 
 
 // }
 
-void PathFinder2::doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end, std::vector<PathFinderComponent> &comps,
+void PathFinder2::doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end,
+                                std::vector<PathFinderComponent> &comps,
+                                std::array<int, N_MAX_ENTITIES> &entity2compvec_ind,
                                 const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id)
 {
 
-    const auto r_start = r_coords[0];
+    const auto r_start = r_coords.at(0);
+    Funnel funnel;
+
+    try
+    {
+        findSubOptimalPathCenters(r_start, r_end, max_radius_of_agent, funnel, thread_id);
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "wtf: " << e.what() << "\n";
+        throw e;
+    }
+    funnel.push_back({r_start, r_start});
+    std::reverse(funnel.begin(), funnel.end());
+    funnel.push_back({r_end, r_end});
+
+    auto path_and_portals = pathFromFunnel(r_start, r_end, max_radius_of_agent, funnel);
+    auto &path = path_and_portals.path;
+
+    try
+    {
+        for (int i = 0; i < agent_indices.size(); ++i)
+        {
+            const auto comp_ind = entity2compvec_ind.at(agent_indices[i]);
+            setPathOfAgent(comps.at(comp_ind), r_end, path_and_portals);
+        }
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "wtf: " << e.what() << "\n";
+        throw e;
+    }
+
+    // pap[comp_ind] = path_and_portals;
+    // funnels[comp_ind] = funnel;
+}
+
+void PathFinder2::doPathFinding2(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end, std::vector<PathFinderComponent> &comps,
+                                 const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id)
+{
+
+    const auto r_start = r_coords.at(0);
     Funnel funnel;
 
     try
@@ -425,9 +513,9 @@ void PathFinder2::issuePaths(std::vector<PathFinderComponent> &comps, const std:
 
     float max_radius_of_agent = 0.;
 
-    sf::Clock time;
+    // sf::Clock time;
 
-    start_tri2indices_.clear();
+    start_tri2indices_and_rstarts_.clear();
     start_tri_inds_.clear();
 
     for (const auto selected_ind : selection)
@@ -451,14 +539,14 @@ void PathFinder2::issuePaths(std::vector<PathFinderComponent> &comps, const std:
 
         comp.needs_update = false;
 
-        if (start_tri2indices_.count(start_tri_ind) == 0)
+        if (start_tri2indices_and_rstarts_.count(start_tri_ind) == 0)
         {
-            start_tri2indices_[start_tri_ind] = {selected_ind};
+            start_tri2indices_and_rstarts_[start_tri_ind] = {{selected_ind, comp.transform.r}};
             start_tri_inds_.push_back(start_tri_ind);
         }
         else
         {
-            start_tri2indices_[start_tri_ind].push_back(selected_ind);
+            start_tri2indices_and_rstarts_[start_tri_ind].push_back({selected_ind, comp.transform.r});
         }
 
         if (comps.at(selected_ind).radius > max_radius_of_agent)
@@ -466,17 +554,21 @@ void PathFinder2::issuePaths(std::vector<PathFinderComponent> &comps, const std:
             max_radius_of_agent = comps.at(selected_ind).radius;
         }
     }
-    const auto time_of_first_part = time.restart().asMicroseconds();
+    // const auto time_of_first_part = time.restart().asMicroseconds();
 
     const auto end_tri_ind = cdt_->findTriangle(r_end, false);
 
     for (const auto start_tri_ind : start_tri_inds_)
     {
-        std::vector<int> &inds = start_tri2indices_.at(start_tri_ind);
+        auto& inds = start_tri2indices_and_rstarts_.at(start_tri_ind);
         auto r_start = cdt_->calcTriangleCenter(cdt_->triangles_[start_tri_ind]);
-        to_update_groups_.push_back({start_tri_ind, end_tri_ind, comps, r_end, max_radius_of_agent, inds});
+        to_update_groups_.push_back({start_tri_ind, end_tri_ind, r_end, max_radius_of_agent, inds});
+        for (auto [entity_ind, r_start] : inds)
+        {
+            entity2update_group_ind_.at(entity_ind) = to_update_groups_.size() - 1;
+        }
     }
-    const auto time_of_second_part = time.restart().asMicroseconds();
+    // const auto time_of_second_part = time.restart().asMicroseconds();
     // std::cout << "1. part took: " << time_of_first_part << " us\n"
     //           << "2. part took: " << time_of_second_part << " us\n";
     // std::cout << "there are : " << to_update_groups_.size() << " paths to find\n";
@@ -491,9 +583,9 @@ void PathFinder2::issuePaths2(std::vector<PathFinderComponent> &comps,
 
     float max_radius_of_agent = 0.;
 
-    sf::Clock time;
+    // sf::Clock time;
 
-    start_tri2indices_.clear();
+    start_tri2indices_and_rstarts_.clear();
     start_tri_inds_.clear();
 
     for (const auto selected_ind : selected_entity_inds)
@@ -517,22 +609,22 @@ void PathFinder2::issuePaths2(std::vector<PathFinderComponent> &comps,
 
         comp.needs_update = false;
 
-        if (start_tri2indices_.count(start_tri_ind) == 0)
+        if (start_tri2indices_and_rstarts_.count(start_tri_ind) == 0)
         {
-            start_tri2indices_[start_tri_ind] = {compvec_ind};
+            start_tri2indices_and_rstarts_[start_tri_ind] = {{selected_ind, comp.transform.r}};
             start_tri_inds_.push_back(start_tri_ind);
         }
         else
         {
-            start_tri2indices_[start_tri_ind].push_back(compvec_ind);
+            start_tri2indices_and_rstarts_[start_tri_ind].emplace_back(selected_ind, comp.transform.r);
         }
 
-        if (comps.at(selected_ind).radius > max_radius_of_agent)
+        if (comps.at(compvec_ind).radius > max_radius_of_agent)
         {
             max_radius_of_agent = comps.at(compvec_ind).radius;
         }
     }
-    const auto time_of_first_part = time.restart().asMicroseconds();
+    // const auto time_of_first_part = time.restart().asMicroseconds();
 
     const auto end_tri_ind = cdt_->findTriangle(r_end, false);
 
@@ -540,11 +632,11 @@ void PathFinder2::issuePaths2(std::vector<PathFinderComponent> &comps,
     int i = 0;
     for (const auto start_tri_ind : start_tri_inds_)
     {
-        std::vector<int> &inds = start_tri2indices_.at(start_tri_ind);
+        std::vector<std::pair<int, sf::Vector2f>> &inds_and_r_starts = start_tri2indices_and_rstarts_.at(start_tri_ind);
         auto r_start = cdt_->calcTriangleCenter(cdt_->triangles_[start_tri_ind]);
-        to_update_groups_.push_back({start_tri_ind, end_tri_ind, comps, r_end, max_radius_of_agent, inds});
+        to_update_groups_.push_back({start_tri_ind, end_tri_ind, r_end, max_radius_of_agent, inds_and_r_starts});
     }
-    const auto time_of_second_part = time.restart().asMicroseconds();
+    // const auto time_of_second_part = time.restart().asMicroseconds();
     // std::cout << "1. part took: " << time_of_first_part << " us\n"
     //           << "2. part took: " << time_of_second_part << " us\n";
     // std::cout << "there are : " << to_update_groups_.size() << " paths to find\n";
@@ -961,6 +1053,200 @@ void PathFinder2::findSubOptimalPathCenters(sf::Vector2f r_start, sf::Vector2f r
                 float new_g_value = distance_start_to_current_tri_center + reduced_vertex.lengths[k];
                 new_g_value += (neighbour_corridor_width <= 2 * radius) * cdt_->boundary_.x;
 
+                const float &h_value = reduced_vertex2astar_data[next_reduced_ind].h_value;
+
+                if (new_g_value < reduced_vertex2astar_data[next_reduced_ind].g_value)
+                {
+                    to_visitx.push({new_g_value + h_value, next_reduced_ind});
+                    reduced_vertex2astar_data[next_reduced_ind].g_value = new_g_value;
+                    reduced_vertex2astar_data[next_reduced_ind].prev = reduced_ind;
+                    reduced_vertex2astar_data[next_reduced_ind].ind_in_tri = k;
+                }
+            }
+        }
+    }
+    fillFunnelData(start, reduced_start, end, reduced_end, funnel, reduced_vertex2astar_data);
+}
+
+//! \brief finds sequence of triangles such that the path going through centers of the triangles is the shortest
+//! \param r_start starting position
+//! \param r_end end position
+//! \param radius to block paths that are too narrow
+//! \param funnel stores data used to create real path going through the triangles
+//! \param thread_id which thread runs the job
+void PathFinder2::findSubOptimalPathCentersWater(sf::Vector2f r_start, sf::Vector2f r_end, float radius, Funnel &funnel, int unit_type,
+                                                 const int thread_id)
+{
+
+    const auto &triangles = cdt_->triangles_;
+    const auto &vertices = cdt_->vertices_;
+    const auto &rtg = *p_rtg_;
+
+    int start = cdt_->findTriangle(r_start, false);
+    int end = cdt_->findTriangle(r_end, false);
+
+    auto triangle_is_within_boundary = [&](const Triangle &tri)
+    {
+        const auto tri_center = cdt_->calcTriangleCenter(tri);
+        return cdt_->boundary_.x >= tri_center.x and tri_center.x > 0 and cdt_->boundary_.y >= tri_center.y and
+               tri_center.y > 0;
+    };
+    assert(triangle_is_within_boundary(triangles.at(start)));
+    assert(triangle_is_within_boundary(triangles.at(end)));
+
+    //! if we cannot reach the destination due to it being in a different graph component
+    if (tri_ind2component_.at(start) != tri_ind2component_.at(end))
+    {
+        const auto new_end_tri_and_edge =
+            closestPointOnNavigableComponent(r_start, end, tri_ind2component_.at(end), tri_ind2component_.at(start));
+        end = new_end_tri_and_edge.first;
+        const auto to = new_end_tri_and_edge.second;
+        r_end = cdt_->calcTriangleCenter(triangles[end]);
+    }
+    if (start == -1 or end == -1 or start == end)
+    {
+        return;
+    }
+
+    // std::vector<AstarReducedData> reduced_vertex2astar_data(p_rtg_->reduced_vertices.size() + 2);
+
+    const auto &start_tri = triangles.at(start);
+    const auto &end_tri = triangles.at(end);
+
+    const int n_free_edges_end = end_tri.countFreeEdges();
+    const int n_free_edges_start = start_tri.countFreeEdges();
+    int end_edge_ind = -1;
+    int reduced_start = rtg.reduced_vertices.size();
+    // reduced_vertex2astar_data_[reduced_start].prev = start;
+    auto &reduced_vertex2astar_data = thread2reduced_vertex2astar_data_[thread_id];
+    reduced_vertex2astar_data.at(reduced_start).prev = start;
+    int reduced_end = rtg.reduced_vertices.size() + 1;
+    if (n_free_edges_end == 2)
+    {
+        end_edge_ind = rtg.tri_ind2vertex.at(end); //! this holds edge_indices for triangles that are corridors
+    }
+
+    float current_shortest_distance = MAXFLOAT;
+
+    auto to_visit = initializeReducedAstar(r_start, r_end, start, reduced_start, end, current_shortest_distance, radius,
+                                           reduced_vertex2astar_data);
+
+    std::priority_queue to_visitx(
+        to_visit.begin(), to_visit.end(),
+        [&](const AstarReducedDataPQ &a1, const AstarReducedDataPQ &a2)
+        { return a1.f_value > a2.f_value; });
+
+    //! if end lies in a corridor we remember which crossorads it connects and search for on of possible ends
+    int first_reduced_end;
+    int second_reduced_end;
+    if (n_free_edges_end == 2)
+    {
+        second_reduced_end = rtg.tri_ind2vertex[rtg.edges[end_edge_ind].end.current];
+        first_reduced_end = rtg.tri_ind2vertex[rtg.edges[end_edge_ind].start.current];
+    }
+    else
+    { //! if it lies on a  reduced vertex we search only for one ind;
+        first_reduced_end = rtg.tri_ind2vertex[end];
+        second_reduced_end = first_reduced_end;
+    }
+    auto reached_end = [first_reduced_end, second_reduced_end](int reduced_ind)
+    {
+        return reduced_ind == first_reduced_end or reduced_ind == second_reduced_end;
+    };
+
+    //! this is where Astar starts;
+    int prev_reduced_ind = reduced_start;
+    TriInd prev_tri_ind = -1;
+    TriInd entry_tri_ind = -1;
+    int entry_ind_in_tri = -1;
+    TriInd current_tri_ind = -1;
+    while (!(to_visitx.empty()))
+    {
+
+        const auto reduced_ind = to_visitx.top().next;
+        const auto &reduced_vertex = rtg.reduced_vertices[reduced_ind];
+        to_visitx.pop();
+
+        const float distance_start_to_current_tri_center = reduced_vertex2astar_data[reduced_ind].g_value;
+
+        if (reached_end(reduced_ind))
+        {
+            // finaliseAstar(...);
+            int entry_ind_in_tri;
+            int entry_reduced_ind;
+            if (n_free_edges_end == 2)
+            { //! end triangle is in corridor corresponding to edge or in crossroads
+                entry_reduced_ind = reduced_ind;
+                if (first_reduced_end == reduced_ind)
+                {
+                    entry_ind_in_tri = std::find(reduced_vertex.neighbours.begin(), reduced_vertex.neighbours.end(),
+                                                 second_reduced_end) -
+                                       reduced_vertex.neighbours.begin();
+                }
+                if (reduced_ind == second_reduced_end)
+                {
+                    entry_ind_in_tri = std::find(reduced_vertex.neighbours.begin(), reduced_vertex.neighbours.end(),
+                                                 first_reduced_end) -
+                                       reduced_vertex.neighbours.begin();
+                }
+            }
+            else
+            {
+                entry_ind_in_tri = reduced_vertex2astar_data[reduced_ind].ind_in_tri;
+                entry_reduced_ind = reduced_vertex2astar_data[reduced_ind].prev;
+            }
+
+            int n_free;
+            int ind_in_tri_corridor;
+            int current_tri_ind = rtg.vertex2tri_ind.at(reduced_ind);
+            const auto r_center = cdt_->calcTriangleCenter(cdt_->triangles_.at(current_tri_ind));
+            Funnel end_funnel;
+            end_funnel.push_back({r_center, r_center}); //! funnel is from center of current triangle to r_end;
+            if (triangles[current_tri_ind].neighbours[entry_ind_in_tri] != end)
+            {
+                const auto edge_ind = rtg.vertex2edge_inds2.at(reduced_ind).at(entry_ind_in_tri);
+                const auto &edge = rtg.edges.at(edge_ind);
+
+                int end_ind_in_edge = std::find(edge.tri_inds.begin(), edge.tri_inds.end(), end) - edge.tri_inds.begin();
+                if (first_reduced_end == reduced_ind)
+                {
+                    fillFunnelWithCorridorFront(edge, 0, end_ind_in_edge, end_funnel, true);
+                }
+                if (second_reduced_end == reduced_ind)
+                {
+                    fillFunnelWithCorridorReversed(edge, edge.tri_inds.size() - 1, end_ind_in_edge, end_funnel, true);
+                }
+            }
+            else
+            {
+                const auto &tri = triangles.at(current_tri_ind);
+                const auto ind_in_tri_corridor = std::find(tri.neighbours.begin(), tri.neighbours.end(), end) - tri.neighbours.begin();
+                auto left_vertex_of_portal = asFloat(tri.verts[next(ind_in_tri_corridor)]);
+                auto right_vertex_of_portal = asFloat(tri.verts[(ind_in_tri_corridor)]);
+                end_funnel.emplace_back(right_vertex_of_portal, left_vertex_of_portal);
+            }
+
+            const auto distance_to_end = rtg.funnelDistance(r_center, r_end, end_funnel, *cdt_);
+
+            if (distance_start_to_current_tri_center + distance_to_end <=
+                current_shortest_distance)
+            { //! update backpointer if path is better
+                reduced_vertex2astar_data.back().prev = entry_reduced_ind;
+                reduced_vertex2astar_data.back().ind_in_tri = entry_ind_in_tri;
+                current_shortest_distance = distance_start_to_current_tri_center + distance_to_end;
+            }
+            continue;
+        }
+        for (int k = 0; k < 3; ++k)
+        { // look at neighbours in reduced graph
+            const auto &next_reduced_ind = reduced_vertex.neighbours[k];
+            if (next_reduced_ind != -1)
+            {
+                const auto &neighbour_corridor_width = reduced_vertex.widths[k];
+                //                if(2*radius >= neighbour_corridor_width){ continue; }
+
+                float new_g_value = distance_start_to_current_tri_center + reduced_vertex.lengths[k];
+                new_g_value += (neighbour_corridor_width <= 2 * radius) * cdt_->boundary_.x;
                 const float &h_value = reduced_vertex2astar_data[next_reduced_ind].h_value;
 
                 if (new_g_value < reduced_vertex2astar_data[next_reduced_ind].g_value)
@@ -1566,7 +1852,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel2(const sf::Vector2f r_st
             }
             else
             {
-                portals.push_back(left_portals[left_index]);
+                portals.push_back(left_portals.at(left_index));
 
                 smoothed_path.push_back(portal_left);
                 portal_apex = portal_left;
@@ -1594,7 +1880,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel2(const sf::Vector2f r_st
             }
             else
             {
-                portals.push_back(right_portals[right_index]);
+                portals.push_back(right_portals.at(right_index));
 
                 smoothed_path.push_back(portal_right);
                 portal_apex = portal_right;
@@ -1611,6 +1897,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel2(const sf::Vector2f r_st
     portals.push_back(Edgef());
     return path_and_portals;
 }
+
 
 //! \brief crates shorte.st path inside a Polygon defined by FunnelData
 //! \param r_start starting position of the path
@@ -1651,19 +1938,18 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
     int i_first_same = 0;
     bool is_first = true;
 
-
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_left;
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_right;
 
     std::vector<int> unique_left({0});
-    std::vector<Vertex> unique_left_points({0});
+    std::vector<Vertex> unique_left_points({ static_cast<Vertex>(funnel[0].first)});
     std::vector<int> unique_right({0});
-    std::vector<Vertex> unique_right_points({0});
+    std::vector<Vertex> unique_right_points({static_cast<Vertex>(funnel[0].first)});
     for (int i = 1; i < funnel.size(); ++i)
     {
         auto next_r = static_cast<Vertex>(funnel[i].first);
         auto next_l = static_cast<Vertex>(funnel[i].second);
-        if (next_l != prev_left)
+        if(!vequal(next_l, prev_left))
         {
             unique_left.push_back(i);
             unique_left_points.push_back(next_l);
@@ -1728,6 +2014,10 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
         }
     }
 
+    // dumpFunnelToFile2(unique_left_points, unique_right_points, "funnel-test-unique.dat");
+    // dumpFunnelToFile(funnel, 3, "funnel-test.dat");
+
+
     left_portals.push_back(Edgef());
     right_portals.push_back(Edgef());
     for (int i = 1; i < funnel.size(); ++i)
@@ -1757,7 +2047,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
                 auto v_port_l = static_cast<Vertex>(portal_left);
                 if (vertex2normal_left.count(v_port_l) > 0)
                 {
-                    portal_left += radius * vertex2normal_left.at(v_port_l);
+                    // portal_left += radius * vertex2normal_left.at(v_port_l);
                 }
                 smoothed_path.push_back(portal_left);
 
@@ -1786,12 +2076,12 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
             }
             else
             {
-                portals.push_back(right_portals[right_index]);
+                portals.push_back(right_portals.at(right_index));
 
                 auto v_port_r = static_cast<Vertex>(portal_right);
                 if (vertex2normal_right.count(v_port_r) > 0)
                 {
-                    portal_right += radius * vertex2normal_right.at(v_port_r);
+                    // portal_right += radius * vertex2normal_right.at(v_port_r);
                 }
                 smoothed_path.push_back(portal_right);
 
@@ -1806,6 +2096,7 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
         }
     }
     smoothed_path.push_back(r_end);
+    // dumpPathToFile(smoothed_path, 3, "path-test.dat");
     portals.push_back(Edgef());
     return path_and_portals;
 }

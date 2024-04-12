@@ -1,20 +1,24 @@
 #include "UnitInitializer.h"
 #include "ECS.h"
 #include "Systems/VisionSystem.h"
-
+#include "Systems/GraphicsSystem.h"
 
 
     void UnitInitializer::registerUnitType(float radius, float mass, int weapon_type_ind,
-                             float r_vision, float max_vel, float max_range , std::string unit_name){
-        unit_type2data_.push_back({radius, mass, r_vision, max_range, max_vel, weapon_type_ind});
+                             float r_vision, float max_vel, float rot_speed, int entity_signature, float max_range, std::string unit_name){
+        
         if(unit_name2type_ind.count(unit_name) != 0){
-            throw std::runtime_error("unit with called: " + unit_name + " already exists!");
+            std::cout << "unit with called: " + unit_name + " already exists!";
+            return;
         }
-        unit_name2type_ind[unit_name] = unit_name2type_ind.size() - 1;
+        unit_type2data_.push_back({radius, mass, r_vision, max_range, max_vel, rot_speed, weapon_type_ind});
+        unit_name2type_ind[unit_name] = unit_type2data_.size() - 1;
+
     }
 
-    void UnitInitializer::initializeUnit(sf::Vector2f pos, int player_ind, sf::Vector2f vel, float orient, int unit_type_ind){
+    void UnitInitializer::initializeUnit(sf::Vector2f pos, int player_ind, sf::Vector2f vel, float orient){
         
+        int unit_type_ind = selected_unit_type_ind;
         if(unit_type_ind >= unit_type2data_.size()){
             throw std::runtime_error("unit does not exist!");
         }
@@ -30,12 +34,10 @@
         PathFinderComponent pfc;
         pfc.transform = tc;
 
-
-
         VisionComponent vsc;
         vsc.trans = tc;
         vsc.player_ind = player_ind;
-        vsc.vision_radius_sq = std::pow(FOW::R_MAX_VISION, 2);
+        vsc.vision_radius_sq = unit_data.r_vision*unit_data.r_vision;
 
         PhysicsComponent pc;
         pc.transform = tc;
@@ -63,10 +65,11 @@
         gc.player_ind = player_ind;
         gc.p_shared_data = &p_ecs_->entity2shared_data.at(new_ent_ind).health;
 
+        p_ecs_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS).onComponentCreation(gc);
+
         // pc.v_max = unit_data.max_vel;
         p_ecs_->entity2shared_data.at(new_ent_ind) = {tc, MoveState::STANDING};
         p_ecs_->entity2shared_data.at(new_ent_ind).health.p_shared_data_ = &p_ecs_->entity2shared_data.at(new_ent_ind).transform;
-
 
         p_ecs_->initializeEntity(ac, tc, pc, vsc, pfc, hc, gc);
     }

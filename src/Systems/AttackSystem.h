@@ -7,7 +7,7 @@
 #include "VisionSystem.h"
 #include "ProjectileSystem.h"
 
-#include "../NeighbourSearcherContext.h"
+#include "../Utils/NeighbourSearcherContext.h"
 
 typedef int WeaponTypeInd;
 
@@ -38,7 +38,8 @@ public:
 
     void update();
 
-    void draw(sf::RenderTarget &window);
+    // void draw(sf::RenderTarget &window);
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
     void setTransform(const int &ind, const TransformComponent &trans);
 

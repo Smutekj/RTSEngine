@@ -1,6 +1,6 @@
 #include "ReducedTriangulationGraph.h"
 
-
+//! \param funnel 
 //! \returns minimal width of a triangle inside a corridor 
 float ReducedTriangulationGraph::calcCorridorWidth(
     const Funnel& funnel) const {

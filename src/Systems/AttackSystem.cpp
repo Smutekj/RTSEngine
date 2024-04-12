@@ -1,6 +1,6 @@
 
 #include "AttackSystem.h"
-#include "../NeighbourSearcherStrategy.h"
+#include "../Utils/NeighbourSearcherStrategy.h"
 
 // AttackSystem::AttackSystem(BoidControler& bc, BoidWorld& world, HealthSystem* hs)
 //     : health_system_(hs)
@@ -141,10 +141,10 @@ void AttackSystem2::attack(Entity att_entity, Entity target_entity, float distan
     }
 
 
-    void AttackSystem2::draw(sf::RenderTarget &window)
-    {
+    // void AttackSystem2::draw(sf::RenderTarget &window)
+    // {
         
-    }
+    // }
 
     void AttackSystem2::setTransform(const int &ind, const TransformComponent &trans)
     {

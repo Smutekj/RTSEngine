@@ -40,7 +40,7 @@ class Edges {
     std::vector<Edgef> calcContactEdges(sf::Vector2f r, float radius) const;
     std::array<std::vector<Edgef>, N_DIRECTIONS> calcContactEdgesO(sf::Vector2f r, float radius) const;
 
-    void draw(sf::RenderWindow& window);
+    // void draw(sf::RenderWindow& window);
 
     void insertEdge(EdgeVInd e, Orientation orient) {}
 };

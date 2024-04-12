@@ -38,6 +38,9 @@ struct EdgesFinder1D {
         for (auto& edges : edge_array_) {
             edges.clear();
         }
+        for (auto& edges : edge_array2_) {
+            edges.clear();
+        }
     }
     int edge1dInd(int cell_index);
     int edge1dPos(int cell_index);

@@ -68,6 +68,9 @@ struct CommandGroupManager
             {
                 group2_finished_indices_.at(old_group_ind).erase(selected);
                 group2finished_surface_area_.at(old_group_ind) -= M_PIf * RHARD * RHARD;
+                if(group2finished_surface_area_.at(old_group_ind) < 0){
+                     group2finished_surface_area_.at(old_group_ind) = 0;
+                }
                 group2_indices_.at(old_group_ind).erase(selected);
                 boidind2_command_group_.at(selected) = new_group_ind;
             }
@@ -107,6 +110,130 @@ struct CommandGroupManager
                     boidind2_command_group_[finished_ind] = -1;
                 }
                 group2_finished_indices_.at(group_ind).clear();
+                group2finished_surface_area_.at(group_ind) = 0;
+            }
+        }
+    }
+
+private:
+    int n_active_groups = 0;
+    int next_group_ind = 0;
+};
+
+
+struct CommandGroupManager2
+{
+ 
+    //! Stuff for differnt groups sharing same command
+    GayVectorI<N_MAX_NAVIGABLE_BOIDS> command_groups;
+    std::array<int, N_MAX_NAVIGABLE_BOIDS> entity2command_group;
+    
+    std::set<int> inactive_group_inds = {0};
+
+    std::vector<std::unordered_set<int>> group2_entities_;
+    std::vector<std::unordered_set<int>> group2_finished_entities_;
+    std::vector<float> group2finished_surface_area_;
+
+    CommandGroupManager2() {
+        std::fill(entity2command_group.begin(), entity2command_group.end(), -1);
+    };
+
+    void removeFromGroup(const int entity_ind)
+    {
+        auto& command_group_ind = entity2command_group.at(entity_ind);
+        
+        command_groups.removeEnt(entity_ind);
+
+        if (command_group_ind != -1)
+        {
+            group2_finished_entities_.at(command_group_ind).insert(entity_ind);
+            group2_entities_.at(command_group_ind).erase(entity_ind);
+            group2finished_surface_area_.at(command_group_ind) += M_PIf * RHARD * RHARD;
+
+            if (group2_entities_.at(command_group_ind).size() == 0)
+            {
+                inactive_group_inds.insert(command_group_ind);
+                n_active_groups--;
+                updateInactives();
+            }
+        }
+        command_group_ind = -1; 
+    }
+
+    float getFinishedAreaOf(int comp_ind)
+    {
+        const auto group_ind = entity2command_group.at(comp_ind);
+
+        if (group_ind == -1)
+        {
+            return 0;
+        }
+        return group2finished_surface_area_.at(group_ind);
+    }
+
+    bool isSameGroup(const int i1, const int i2)
+    {
+        return entity2command_group.at(i1) == entity2command_group.at(i2);
+    }
+
+    void addGroup(const std::vector<int> &selection)
+    {
+
+        assert(inactive_group_inds.size() > 0);
+        const int new_group_ind = *(inactive_group_inds.begin());
+        inactive_group_inds.erase(new_group_ind);
+        n_active_groups++;
+        for (const auto selected : selection)
+        {
+            const auto old_group_ind = entity2command_group.at(selected);
+            assert(old_group_ind != new_group_ind);
+            entity2command_group.at(selected) = new_group_ind;
+            if (old_group_ind != -1)
+            {
+                group2_finished_entities_.at(old_group_ind).erase(selected);
+                group2finished_surface_area_.at(old_group_ind) -= M_PIf * RHARD * RHARD;
+                if(group2finished_surface_area_.at(old_group_ind) < 0){
+                     group2finished_surface_area_.at(old_group_ind) = 0;
+                }
+                group2_entities_.at(old_group_ind).erase(selected);
+                entity2command_group.at(selected) = new_group_ind;
+            }
+        }
+
+        if (new_group_ind == group2_entities_.size()) //! new group does not exist yet
+        {
+            assert(inactive_group_inds.size() == 0);
+            group2_entities_.emplace_back(selection.begin(), selection.end());
+            group2_finished_entities_.emplace_back();
+            group2finished_surface_area_.emplace_back(0);
+        }
+        else
+        {
+            assert(inactive_group_inds.size() != 0);
+            group2_entities_.at(new_group_ind) = {selection.begin(), selection.end()};
+            group2_finished_entities_.at(new_group_ind) = {};
+            group2finished_surface_area_.at(new_group_ind) = 0;
+        }
+
+        if (inactive_group_inds.size() == 0)
+        {
+            int next_inactive_group_ind = group2_entities_.size();
+            inactive_group_inds.insert(next_inactive_group_ind);
+        }
+    }
+
+    void updateInactives()
+    {
+        for (int group_ind = 0; group_ind < group2_entities_.size(); group_ind++)
+        {
+
+            if (group2_entities_.at(group_ind).size() == 0) //! when group is empty
+            {
+                for (auto finished_ind : group2_finished_entities_.at(group_ind))
+                {
+                    entity2command_group[finished_ind] = -1;
+                }
+                group2_finished_entities_.at(group_ind).clear();
                 group2finished_surface_area_.at(group_ind) = 0;
             }
         }

@@ -1,5 +1,5 @@
 #include "VisionSystem.h"
-
+#include "../MapGrid.h"
 
 VisionSystem::VisionSystem(ComponentID id) : System2(id)
 {}
@@ -12,6 +12,67 @@ void VisionField::addToRevealedStripes(int stripe_ind, Interval interv)
 void VisionField::addToStripes(int stripe_ind, Interval interv)
 {
     addTo(stripes_.at(stripe_ind), interv);
+}
+
+void VisionSystem::updateWallFromMap(const MapGrid& map){
+    int n_x = map.n_cells_.x;
+    int n_y = map.n_cells_.y;
+    const auto dx = map.cell_size_.x;
+    const auto dy = map.cell_size_.y;
+    for(int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind){
+        wall_stripes.at(stripe_ind).clear();
+    }
+
+    VisionField::Interval wall_interv;
+    for(int j = 0; j < n_y;  ++j){
+
+        bool encountered_wall = false;
+        for(int i = 0; i < n_x;  ++i){
+
+            const auto cell_ind = i  + j * n_x;
+            sf::Vector2f cell_pos = {i * dx, j * dy}; 
+            const int stripe_ind = cell_pos.y / FOW::DY_VISION;
+            if(map.tiles.at(cell_ind) == MapGrid::TileType::WALL){
+                if(!encountered_wall){wall_interv.x_left = cell_pos.x; encountered_wall = true;} //! if we hit wall for the first time;
+                
+            }
+            if(encountered_wall && map.tiles.at(cell_ind) != MapGrid::TileType::WALL){ // if we stepped from wall down to ground
+                wall_interv.x_right = cell_pos.x + dx;
+                player2vision_field_.at(0).addTo(wall_stripes.at(stripe_ind), wall_interv);
+                encountered_wall = false;
+                // wall_stripes.at(stripe_ind).push_back(wall_interv);
+            }
+        }
+    }
+    // for(int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind){
+    //     auto& stripes = wall_stripes.at(stripe_ind);
+    //     std::sort(stripes.begin(), stripes.end(), [](const auto& i1, const auto& i2){
+    //         return i1.x_left < i2.x_left;});
+    // }
+
+}
+
+VisionField::Interval VisionSystem::cutIntervalByWalls(VisionField::Interval& interv, int stripe_ind){
+    const auto& walls = wall_stripes.at(stripe_ind);
+    VisionField::Interval new_interv = {-1,-1};
+    auto x_center = (interv.x_left + interv.x_right)/2.f;
+    for(const auto& wall : walls){
+        if(wall.x_left > interv.x_left && wall.x_right < interv.x_right){
+            new_interv = {wall.x_right, interv.x_right};
+            interv.x_right = wall.x_left;
+            break;
+        }
+        if(interv.x_left < wall.x_left && wall.x_left < interv.x_right){
+            interv.x_right = wall.x_left;
+            break;
+        }
+        if(interv.x_right < wall.x_right && wall.x_right < interv.x_right){
+            interv.x_left = wall.x_right;
+            break;
+        }
+        
+    }
+    return new_interv;
 }
 
 void VisionSystem::update()
@@ -63,7 +124,12 @@ void VisionSystem::update()
                 for (const auto &data : data_in_stripe)
                 {
                     const float delta_x = std::sqrt(data.radius_sq);
-                    vision_field.addToStripes(stripe_ind_i, {data.r.x - delta_x, data.r.x + delta_x});
+                    VisionField::Interval interv = {data.r.x - delta_x, data.r.x + delta_x};
+                    auto new_interv = cutIntervalByWalls(interv, stripe_ind_i);
+                    vision_field.addToStripes(stripe_ind_i, interv);
+                    if(new_interv.x_left >= 0){
+                        vision_field.addToStripes(stripe_ind_i, new_interv);
+                    }
                 }
                 for (int delta_i = 1; delta_i <= FOW::N_MAX_DELTA_STRIPEIND; ++delta_i)
                 {
@@ -78,7 +144,12 @@ void VisionSystem::update()
                     {
                         if(data.radius_sq - dy * dy < 0) {continue;}
                         const float delta_x = std::sqrt(data.radius_sq - dy * dy);
-                        vision_field.addToStripes(stripe_ind_i, {data.r.x - delta_x, data.r.x + delta_x});
+                        VisionField::Interval interv = {data.r.x - delta_x, data.r.x + delta_x};
+                        auto new_interv = cutIntervalByWalls(interv, stripe_ind_i);
+                        vision_field.addToStripes(stripe_ind_i, interv);
+                        if(new_interv.x_left >= 0){
+                            vision_field.addToStripes(stripe_ind_i, new_interv);
+                        }
                     }
 
                     int stripe_ind_right = stripe_ind_i + delta_i;
@@ -90,7 +161,13 @@ void VisionSystem::update()
                     {
                         if(data.radius_sq - dy * dy < 0) {continue;}
                         const float delta_x = std::sqrt(data.radius_sq - dy * dy);
-                        vision_field.addToStripes(stripe_ind_i, {data.r.x - delta_x, data.r.x + delta_x});
+                        VisionField::Interval interv = {data.r.x - delta_x, data.r.x + delta_x};
+                        auto new_interv = cutIntervalByWalls(interv, stripe_ind_i);
+                        vision_field.addToStripes(stripe_ind_i, interv);
+                        if(new_interv.x_left >= 0){
+                            vision_field.addToStripes(stripe_ind_i, new_interv);
+                        }
+                        // vision_field.addToStripes(stripe_ind_i, {data.r.x - delta_x, data.r.x + delta_x});
                     }
                 }
             }
@@ -124,12 +201,15 @@ void VisionSystem::drawStripe(VisionField::StripeVec &intervals, float y_pos, sf
     {
         auto x_left = intervals[i].x_right;
         auto x_right = intervals[i + 1].x_left;
-        vertices[last + i * 4 + 0] = {{x_left, y_pos}, color};
-        vertices[last + i * 4 + 1] = {{x_right, y_pos}, color};
-        vertices[last + i * 4 + 2] = {{x_right, y_pos + dy_}, color};
-        vertices[last + i * 4 + 3] = {{x_left, y_pos + dy_}, color};
+        vertices[last + i * 6 + 0] = {{x_left, y_pos}, color};
+        vertices[last + i * 6 + 1] = {{x_right, y_pos}, color};
+        vertices[last + i * 6 + 2] = {{x_right, y_pos + dy_}, color};
+
+        vertices[last + i * 6 + 3] = {{x_right, y_pos + dy_}, color};
+        vertices[last + i * 6 + 4] = {{x_left, y_pos + dy_}, color};
+        vertices[last + i * 6 + 5] = vertices[last + i * 6 + 0];
     }
-    last += (n_intervals - 1) * 4;
+    last += (n_intervals - 1) * 6;
 
     intervals.pop_back();
     intervals.pop_front();
@@ -155,15 +235,6 @@ void VisionField::addTo(VisionField::StripeVec &stripe_vec, float x_left, float 
         stripe_vec.push_back({x_left, x_right});
         return;
     }
-
-    // auto first_low_left =
-    //     std::lower_bound(stripe_vec.begin(), stripe_vec.end(), x_left,
-    //                      [](const auto& p1, float to_find) { return p1.first < to_find; });
-
-    // auto first_low_right =
-    //     std::lower_bound(stripe_vec.begin(), stripe_vec.end(), x_right,
-    //                      [](const auto& p1, float to_find) { return p1.first < to_find; });
-
     auto first_low_left =
         std::find_if_not(stripe_vec.begin(), stripe_vec.end(), [&x_left](const auto &p1)
                          { return p1.x_left < x_left; });
@@ -265,46 +336,46 @@ void VisionSystem::reveal()
     }
 }
 
-void VisionSystem::draw(sf::RenderTarget &window)
-{
+// void VisionSystem::draw(sf::RenderTarget &window)
+// {
 
-    auto &vf = player2vision_field_.at(selected_player_ind);
-    auto &fow_vertices = vf.fow_vertices_;
-    auto &revealed_fow_vertices = vf.revealed_fow_vertices_;
-    fow_vertices.clear();
-    fow_vertices.setPrimitiveType(sf::Quads);
-    revealed_fow_vertices.clear();
-    revealed_fow_vertices.setPrimitiveType(sf::Quads);
-    int n_revealed_vertices = 0;
-    int n_fow_vertices = 0;
+//     auto &vf = player2vision_field_.at(selected_player_ind);
+//     auto &fow_vertices = vf.fow_vertices_;
+//     auto &revealed_fow_vertices = vf.revealed_fow_vertices_;
+//     fow_vertices.clear();
+//     fow_vertices.setPrimitiveType(sf::Quads);
+//     revealed_fow_vertices.clear();
+//     revealed_fow_vertices.setPrimitiveType(sf::Quads);
+//     int n_revealed_vertices = 0;
+//     int n_fow_vertices = 0;
 
-    auto &stripes_ = vf.stripes_;
-    auto &revealed_stripes_ = vf.revealed_stripes_;
+//     auto &stripes_ = vf.stripes_;
+//     auto &revealed_stripes_ = vf.revealed_stripes_;
 
-    for (int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind)
-    {
-        n_revealed_vertices += 4 * (revealed_stripes_.at(stripe_ind).size() + 1);
-        n_fow_vertices += 4 * (stripes_.at(stripe_ind).size() + 1);
-    }
+//     for (int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind)
+//     {
+//         n_revealed_vertices += 4 * (revealed_stripes_.at(stripe_ind).size() + 1);
+//         n_fow_vertices += 4 * (stripes_.at(stripe_ind).size() + 1);
+//     }
 
-    revealed_fow_vertices.resize(n_revealed_vertices);
-    fow_vertices.resize(n_fow_vertices);
+//     revealed_fow_vertices.resize(n_revealed_vertices);
+//     fow_vertices.resize(n_fow_vertices);
 
-    int last_ind_s = 0;
-    int last_ind_rs = 0;
-    for (int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind)
-    {
-        const float y_pos = stripe_ind * dy_;
-        drawStripe(stripes_.at(stripe_ind), y_pos, fow_vertices, {grey_color}, last_ind_s);
-        drawStripe(revealed_stripes_.at(stripe_ind), y_pos, revealed_fow_vertices, sf::Color::Black, last_ind_rs);
-    }
+//     int last_ind_s = 0;
+//     int last_ind_rs = 0;
+//     for (int stripe_ind = 0; stripe_ind < FOW::N_STRIPES; ++stripe_ind)
+//     {
+//         const float y_pos = stripe_ind * dy_;
+//         drawStripe(stripes_.at(stripe_ind), y_pos, fow_vertices, {grey_color}, last_ind_s);
+//         drawStripe(revealed_stripes_.at(stripe_ind), y_pos, revealed_fow_vertices, sf::Color::Black, last_ind_rs);
+//     }
 
-    if (settings_.hasAttribute(FogOfWarSettings::Options::REVEAL))
-    {
-        window.draw(revealed_fow_vertices);
-    }
-    if (settings_.hasAttribute(FogOfWarSettings::Options::FOGOFWAR))
-    {
-        window.draw(fow_vertices);
-    }
-}
+//     if (settings_.hasAttribute(FogOfWarSettings::Options::REVEAL))
+//     {
+//         window.draw(revealed_fow_vertices);
+//     }
+//     if (settings_.hasAttribute(FogOfWarSettings::Options::FOGOFWAR))
+//     {
+//         window.draw(fow_vertices);
+//     }
+// }

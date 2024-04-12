@@ -3,6 +3,7 @@
 #include "../core.h"
 #include "../ECS.h"
 #include "../Settings.h"
+#include "../Graphics/VertexArray.hpp"
 
 namespace FOW
 {
@@ -53,6 +54,9 @@ namespace FOW
     static constexpr auto DELTAS = DeltaY<N_MAX_DELTA_STRIPEIND>();
 } //! Namespace FOW
 
+
+
+
 struct VisionField
 {
 
@@ -67,17 +71,19 @@ struct VisionField
     std::array<StripeVec, FOW::N_STRIPES> stripes_;
     std::array<StripeVec, FOW::N_STRIPES> revealed_stripes_;
 
-    sf::VertexArray fow_vertices_;          //! this holds vertices for drawing
-    sf::VertexArray revealed_fow_vertices_; //! this holds vertices for drawing
 
     void addToRevealedStripes(int stripe_ind, Interval interv);
 
     void addToStripes(int stripe_ind, Interval interv);
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
-private:
+public:
     void addTo(StripeVec &stripe_vec, const Interval &interv);
     void addTo(StripeVec &stripe_vec, float x_left, float x_right);
 };
+
+static std::array<VisionField::StripeVec, FOW::N_STRIPES> wall_stripes;
+
 
 struct VisionComponent : Component<ComponentID::VISION>
 {
@@ -85,6 +91,8 @@ struct VisionComponent : Component<ComponentID::VISION>
     float vision_radius_sq;
     int player_ind = 0;
 };
+
+class MapGrid;
 
 struct VisionSystem : System2
 {
@@ -100,6 +108,7 @@ struct VisionSystem : System2
     typedef ComponentArray<VisionComponent> VisionArray;
 
     std::array<VisionField, N_PLAYERS> player2vision_field_;
+
     std::array<std::array<std::vector<VisionData>, FOW::N_STRIPES>, N_PLAYERS> player2stripe2particle_data_; //! https://www.youtube.com/watch?v=lD_ag67tH3I
 
     float dy_ = FOW::DY_VISION;
@@ -111,7 +120,7 @@ public:
     VisionSystem(ComponentID id);
     ~VisionSystem() = default;
 
-    void draw(sf::RenderTarget &target);
+    // void draw(sf::RenderTarget &target);
     void setTransform(const int &ind, const TransformComponent &trans)
     {
         auto &comps = static_cast<ComponentArray<VisionComponent> &>(*p_comps_.get()).components_;
@@ -130,7 +139,9 @@ public:
         
     }
 
+    VisionField::Interval cutIntervalByWalls(VisionField::Interval& interv, int stripe_ind);
 
+    void updateWallFromMap(const MapGrid& map);
     void update();
 
     void reveal();
@@ -150,12 +161,11 @@ public:
         return false;
     }
 
-private:
+public:
     void addOnGrid(VisionComponent &vc)
     {
     }
     void drawStripe(VisionField::StripeVec &intervals, float y_pos, sf::VertexArray &vertices, sf::Color color, int &last);
 
-private:
-    sf::Color grey_color = {0, 0, 1, 69};
+    sf::Color grey_color = {0, 0, 0, 255};
 };

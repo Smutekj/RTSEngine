@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../ECS.h"
-#include "../NeighbourSearcherContext.h"
 #include "../Edges.h"
+#include "../Utils/NeighbourSearcherContext.h"
 
 constexpr int N_CELLS_PHYSICS_NS = 100;
 constexpr float R_MAX_PHYSICS_NS = 20;
@@ -22,6 +22,8 @@ struct PhysicsSystem : System2{
     std::unique_ptr<NeighbourSearcherContext<PhysicsComponent, InteractionData>> p_ns_;
     Edges* p_map_;
 
+    float max_speed = 1.0f;
+
     const float dt = 1/60.f;
 
     PhysicsSystem(ComponentID id);
@@ -29,11 +31,16 @@ struct PhysicsSystem : System2{
     
     void update();
     void avoidWall();
-    void draw(sf::RenderTarget& target);
+    // void draw(sf::RenderTarget& target);
     void setTransform(const int& e, const TransformComponent& trans){}
     
     void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES>& new_data, const std::vector<Entity>& active_entity_inds);
     void communicateVelocities(std::array<SharedData, N_MAX_ENTITIES>& entity2shared_data)const;
+    std::vector<PhysicsComponent>& getComponents(){
+        return static_cast<CompArray&>(*p_comps_).components_;
+    }
+
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
     private:
     void applyForces(const std::array<InteractionData, N_MAX_NEIGHBOURS>& data, const int n_last_neighbour, PhysicsComponent& physics);

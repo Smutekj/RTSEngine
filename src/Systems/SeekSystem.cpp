@@ -1,6 +1,6 @@
 #include "SeekSystem.h"
 #include "../PathFinding/PathFinder2.h"
-#include "../NeighbourSearcherStrategy.h"
+#include "../Utils/NeighbourSearcherStrategy.h"
 
 SeekSystem::SeekSystem(ComponentID id) : System2(id)
 {
@@ -9,11 +9,30 @@ SeekSystem::SeekSystem(ComponentID id) : System2(id)
     p_ns_->setStrategy(NS_STRATEGY::BASIC);
 }
 
-void SeekSystem::issuePaths(std::vector<int> &entity_inds, sf::Vector2f path_end)
+void SeekSystem::issuePaths2(const std::vector<int> &entity_inds, sf::Vector2f path_end)
+{
+    auto &components = static_cast<CompArray &>(*p_comps_.get()).components_;
+
+    for (const auto e_ind : entity_inds)
+    {
+        const auto compvec_ind = entity2compvec_ind_.at(e_ind);
+        if (compvec_ind == -1)
+        { //! already removed
+            continue;
+        }
+        // components.at(compvec_ind).r_next = path_end;
+        components.at(compvec_ind).path_end = path_end;
+        components.at(compvec_ind).transform.angle_vel = components.at(compvec_ind).turn_rate;
+    }
+    commander_groups_.addGroup(entity_inds);
+    p_pathfinder_->issuePaths2(components, entity_inds, entity2compvec_ind_, path_end);
+}
+
+
+void SeekSystem::issuePaths(const std::vector<int> &entity_inds, sf::Vector2f path_end)
 {
     auto &components = static_cast<CompArray &>(*p_comps_.get()).components_;
     std::vector<int> compvec_inds;
-    compvec_inds.reserve(entity_inds.size());
     for (const auto e_ind : entity_inds)
     {
         const auto compvec_ind = entity2compvec_ind_.at(e_ind);
@@ -26,7 +45,7 @@ void SeekSystem::issuePaths(std::vector<int> &entity_inds, sf::Vector2f path_end
         components.at(compvec_ind).transform.angle_vel = components.at(compvec_ind).turn_rate;
     }
     commander_groups_.addGroup(compvec_inds);
-    p_pathfinder_->issuePaths2(components, entity_inds, entity2compvec_ind_, path_end);
+    p_pathfinder_->issuePaths(components, entity_inds, path_end);
 }
 
 void SeekSystem::update()
@@ -43,7 +62,16 @@ void SeekSystem::update()
         }
     }
 
-    p_pathfinder_->updatePaths(components, 5000);
+    p_pathfinder_->updatePaths(components, entity2compvec_ind_, 5000);
+
+        //! check that each entity is there at most once
+    std::unordered_set<int> ents;
+    for(const auto& group : commander_groups_.group2_entities_){
+        for(auto ind : group){
+            ents.insert(ind);
+            assert(ents.count(ind) <= 1);
+        }
+    }
 
     int compvec_ind = 0;
     for (auto &comp : components)
@@ -61,12 +89,12 @@ void SeekSystem::update()
             turnTowards(comp, dr_to_target);
 
             float norm_dr = norm(dr_to_target);
-            if (norm_dr > comp.radius && comp.transform.angle_vel == 0)
+            if (norm_dr > comp.radius)
             {
                 comp.transform.vel = dr_to_target / norm_dr * comp.max_speed;
             }
 
-            if (comp.transform.angle_vel == 0 && needsUpdating(comp))
+            if (needsUpdating(comp))
             {
                 updateTarget(comp, r);
             }
@@ -94,96 +122,11 @@ void SeekSystem::update()
 
     while (!comp_inds_to_update_.empty())
     {
-        std::vector<int> entity_ind = {compvec_ind2entity_ind_.at(comp_inds_to_update_.front())};
+        const auto compvec_ind = comp_inds_to_update_.front();
+        std::vector<int> entity_ind = {compvec_ind2entity_ind_.at(compvec_ind)};
         p_pathfinder_->issuePaths2(components, entity_ind, entity2compvec_ind_,
-                                   components.at(comp_inds_to_update_.back()).path_end);
+                                   components.at(compvec_ind).path_end);
         comp_inds_to_update_.pop();
-    }
-}
-
-void SeekSystem::draw(sf::RenderTarget &window)
-{
-    for (int i = 0; i < N_MAX_THREADS; ++i)
-    {
-        const auto &path = p_pathfinder_->pap[i].path;
-        const auto &portals = p_pathfinder_->pap[i].portals;
-        sf::RectangleShape line;
-        auto color = sf::Color::Cyan;
-        color.r += i / 255.f * N_MAX_THREADS;
-        line.setFillColor(color);
-        sf::CircleShape node;
-        node.setRadius(1.f);
-        node.setFillColor(sf::Color::Cyan);
-
-        sf::RectangleShape portal_line;
-        portal_line.setFillColor(sf::Color::Black);
-
-        for (int i = 1; i < path.size(); ++i)
-        {
-            const auto dr = path.at(i) - path.at(i - 1);
-            const auto dr_norm = norm(dr);
-            const auto dr2 = portals[i].t;
-            const auto angle = 180.f / (M_PIf)*std::acos(dot(dr / dr_norm, {0, 1})) * (2.f * (dr.x < 0.f) - 1.f);
-            const auto angle2 = 180.f / (M_PIf)*std::acos(dot(dr2, {0, 1})) * (2.f * (dr2.x < 0.f) - 1.f);
-            line.setPosition(path.at(i - 1));
-            line.setSize({1, dr_norm});
-            line.setRotation(angle);
-
-            portal_line.setPosition(portals[i].from);
-            portal_line.setSize({1, portals[i].l});
-            portal_line.setRotation(angle2);
-
-            node.setPosition(path.at(i) - sf::Vector2f{1.f, 1.f});
-
-            if (settings_.options_.at(SeekSystemSettings::Options::SHOW_PORTALS))
-            {
-                window.draw(portal_line);
-            }
-            if (settings_.options_.at(SeekSystemSettings::Options::SHOW_PATH))
-            {
-                window.draw(line);
-                window.draw(node);
-            }
-        }
-    }
-
-    //! draw funnels
-    for (int i = 0; i < N_MAX_THREADS; ++i)
-    {
-        const auto &funnel = p_pathfinder_->funnels[i];
-        sf::RectangleShape line_l;
-        sf::RectangleShape line_r;
-
-        auto color = sf::Color::Magenta;
-        line_l.setFillColor(color);
-        line_r.setFillColor(color);
-        sf::CircleShape node;
-        node.setRadius(1.f);
-        node.setFillColor(sf::Color::Black);
-
-        if (settings_.options_.at(SeekSystemSettings::Options::SHOW_FUNNEL))
-        {
-            for (int i = 1; i < funnel.size(); ++i)
-            {
-                const auto dr_l = funnel.at(i).first - funnel.at(i - 1).first;
-                const auto dr_r = funnel.at(i).second - funnel.at(i - 1).second;
-                const auto drl_norm = norm(dr_l);
-                const auto drr_norm = norm(dr_r);
-                const auto angle_l = 180.f / (M_PIf)*std::acos(dot(dr_l / drl_norm, {0, 1})) * (2.f * (dr_l.x < 0.f) - 1.f);
-                const auto angle_r = 180.f / (M_PIf)*std::acos(dot(dr_r / drr_norm, {0, 1})) * (2.f * (dr_r.x < 0.f) - 1.f);
-                line_l.setPosition(funnel.at(i - 1).first);
-                line_l.setSize({1, drl_norm});
-                line_l.setRotation(angle_l);
-
-                line_r.setPosition(funnel.at(i - 1).second);
-                line_r.setSize({1, drr_norm});
-                line_r.setRotation(angle_r);
-
-                window.draw(line_l);
-                window.draw(line_r);
-                window.draw(node);
-            }
-        }
     }
 }
 
@@ -371,6 +314,10 @@ void SeekSystem::updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &
     }
 }
 
+void SeekSystem::onComponentRemoval(int comp_ind){
+        p_pathfinder_->to_update_groups_;
+    }
+
 void SeekSystem::communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shared_data) const
 {
     int comp_ind = 0;
@@ -379,9 +326,14 @@ void SeekSystem::communicate(std::array<SharedData, N_MAX_ENTITIES> &entity2shar
     for (const auto &comp : components)
     {
         auto entity_ind = compvec_ind2entity_ind_.at(comp_ind);
+        entity2shared_data.at(entity_ind).target = comp.r_next;
         entity2shared_data.at(entity_ind).state = comp.state;
         entity2shared_data.at(entity_ind).transform.r = comp.transform.r;
+        auto phys_vel = entity2shared_data.at(entity_ind).transform.vel;
+        // if(dot(comp.transform.vel, phys_vel) >= 0 && norm(phys_vel) < 5.f){
+        // auto alpha = std::exp(-norm(phys_vel) /50.f);
         entity2shared_data.at(entity_ind).transform.vel += comp.transform.vel;
+        // }
         entity2shared_data.at(entity_ind).transform.angle_vel = comp.transform.angle_vel;
 
         comp_ind++;

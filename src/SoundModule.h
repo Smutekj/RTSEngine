@@ -1,21 +1,21 @@
 #pragma once
 
-#include <SFML/Audio.hpp>
+// #include <SFML/Audio.hpp>
 
-#include "core.h"
-#include <unordered_map>
-#include "Graphics/ResourceHolder.hpp"
-#include "Graphics/ResourceIdentifiers.hpp"
+// #include "core.h"
+// #include <unordered_map>
+// #include "Graphics/ResourceHolder.hpp"
+// #include "Graphics/ResourceIdentifiers.hpp"
 
 
-class SoundModule{
+// class SoundModule{
 
-    SoundHolder holder_;
-    sf::Sound sound;
+//     SoundHolder holder_;
+//     sf::Sound sound;
 
-public:
-    SoundModule();
+// public:
+//     SoundModule();
 
-    void playSound(Sounds::ID id);
+//     void playSound(Sounds::ID id);
 
-};
+// };

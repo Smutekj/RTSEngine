@@ -1,7 +1,7 @@
 #include <omp.h>
 #include "Edges.h"
 #include "EdgesFinder1D.h"
-#include "Grid.h"
+#include "Utils/Grid.h"
 
 Edges::Edges(Grid& grid)
     : p_grid(&grid) {
@@ -295,20 +295,20 @@ std::array<std::vector<Edgef>, N_DIRECTIONS> Edges::calcContactEdgesO(sf::Vector
     return orientation2contact_edges;
 }
 
-void Edges::draw(sf::RenderWindow& window) {
-    sf::RectangleShape line;
-    line.setFillColor(sf::Color::Green);
-    sf::CircleShape circle;
-    for (const auto& edge : edges_) {
-        line.setSize({1.f, edge.l});
-        line.setPosition(edge.from);
-        auto angle = 180.f / (M_PIf)*std::acos(dot(edge.t, {0, 1})) * (2.f * (edge.t.x < 0.f) - 1.f);
-        line.setRotation(angle);
-        //            window.draw(line);
-    }
-    for (const auto& v : vertices_) {
-        circle.setRadius(5.f);
-        circle.setPosition(asFloat(v));
-        window.draw(circle);
-    }
-}
+// void Edges::draw(sf::RenderWindow& window) {
+//     sf::RectangleShape line;
+//     line.setFillColor(sf::Color::Green);
+//     sf::CircleShape circle;
+//     for (const auto& edge : edges_) {
+//         line.setSize({1.f, edge.l});
+//         line.setPosition(edge.from);
+//         auto angle = 180.f / (M_PIf)*std::acos(dot(edge.t, {0, 1})) * (2.f * (edge.t.x < 0.f) - 1.f);
+//         line.setRotation(angle);
+//         //            window.draw(line);
+//     }
+//     for (const auto& v : vertices_) {
+//         circle.setRadius(5.f);
+//         circle.setPosition(asFloat(v));
+//         window.draw(circle);
+//     }
+// }

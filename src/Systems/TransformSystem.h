@@ -21,8 +21,9 @@ struct TransformSystem : System2{
         //     compvec_ind++;
         // }
     }
+    virtual void onComponentCreation(GraphicsComponent& comp){}
 
-    void draw(sf::RenderTarget& target){}
+    // void draw(sf::RenderTarget& target){}
     void setTransform(const int& e, const TransformComponent& trans){}
     void updateSharedData(const std::array<SharedData, N_MAX_ENTITIES>& new_data, const std::vector<Entity>& active_entity_inds)
     {

@@ -1,0 +1,15 @@
+[UnitType]
+name default
+components PHYSICS PATHFINDING VISION ATTACK HEALTH
+[PHYSICS]
+mass 1
+radius 3
+[PATHFINDING]
+radius 3
+[VISION]
+VISION_RADIUS 30
+[ATTACK]
+WEAPON_RANGE 30
+[HEALTH]
+max_health 5
+END
