@@ -8,6 +8,11 @@ PhysicsSystem::PhysicsSystem(ComponentID id) : System2(id){
         p_ns_->setStrategy(NS_STRATEGY::BASIC);
     }
 
+
+//! \brief calculates "forces" of each component and clamps velocities. Velocities are of two types: inertial and normal. 
+//! \brief Inertial velocities do not get zeroes at the end of frame and thus can accumulate.
+//! \brief  However, they are subject to exponential decay.
+//! \brief afterwards we apply wall and other constraints to avoid passing through obstacles  
 void PhysicsSystem::update() {
         auto& components = static_cast<CompArray&>(*p_comps_).components_;
         p_ns_->update(components);
@@ -36,11 +41,10 @@ void PhysicsSystem::update() {
         avoidWall();
     }
 
-    // void PhysicsSystem::draw(sf::RenderTarget& target){
-        
-    // }
 
-
+//! \brief calculates forces of a given \param phys_comp 
+//! \brief The forces are: 
+//! \brief   
     void PhysicsSystem::applyForces(const std::array<InteractionData, N_MAX_NEIGHBOURS>& data, const int n_last_neighbour, PhysicsComponent& phys_comp){
             const auto mass_i = phys_comp.mass;
             const auto state_i = phys_comp.state;
@@ -94,7 +98,7 @@ void PhysicsSystem::update() {
                 scatter_force = 5.f*dr_nearest_neighbours / norm(dr_nearest_neighbours) * phys_comp.max_speed;
             }
 
-            phys_comp.inertia_vel += (repulsion_force + 0.f*push_force + scatter_force);
+            phys_comp.inertia_vel += (repulsion_force + push_force + scatter_force);
 
     }
     void PhysicsSystem::communicate(std::array<SharedData, N_MAX_ENTITIES>& entity2shared_data)const{

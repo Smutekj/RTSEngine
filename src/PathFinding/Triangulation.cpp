@@ -1001,8 +1001,8 @@ void Triangulation::insertConstraint(const EdgeVInd e) {
             //            const auto v1 = vertices_[tri_a.vertinds[(vi_ind + 1) % 3]];
             //            const auto v2 = vertices_[tri_a.vertinds[(vi_ind + 2) % 3]];
 
-            const auto v1 = tri_a.verts[(vi_ind + 1) % 3];
-            const auto v2 = tri_a.verts[(vi_ind + 2) % 3];
+            const auto v1 = tri_a.verts[next(vi_ind)];
+            const auto v2 = tri_a.verts[prev(vi_ind)];
 
             bool edge_needs_swap = needSwap(vi, v1, v2, vj);
             bool is_convex = true; //! Convexity check should be automatically taken care of by needSwap but it doesn't
@@ -1048,6 +1048,21 @@ void Triangulation::insertRectangle(const sf::Vector2i center, const sf::Vector2
     }
 }
 
+//! \brief fixes neighbours after edge swapping
+void Triangulation::fixNeighbours(Triangle& tri, int ind_in_tri, TriInd old_neighbour_ind, TriInd new_neighbour_ind){
+    auto& tri_next_next = triangles_[tri.neighbours[next(ind_in_tri)]];
+    auto neighbour_to_fix_it = std::find(tri_next_next.neighbours.begin(), tri_next_next.neighbours.end(), old_neighbour_ind);
+    assert(neighbour_to_fix_it != tri_next_next.neighbours.end());
+    *neighbour_to_fix_it = new_neighbour_ind;
+    
+}
+
+//! \brief swaps that is shared by \p tri_ind_a and \p tri_ind_b using Lawson swapping.
+//! \brief The triangles form a quadrilateral and their shared edge is swapped 
+//! \param  tri_ind_a index of first triangle
+//! \param  tri_ind_b index of second triangle
+//! \param  v_a vertex of the first triangle not lying on the shared edge
+//! \param v_ind_a index of \p v_a in the vertex list  
 void Triangulation::swapConnectingEdge(const TriInd& tri_ind_a, const TriInd& tri_ind_b, int v_ind_a, Vertex v_a,
                                        bool inv) {
     auto& tri_a = triangles_[tri_ind_a];
@@ -1058,69 +1073,59 @@ void Triangulation::swapConnectingEdge(const TriInd& tri_ind_a, const TriInd& tr
 
     if (inv) {
         //        tri_a.vertinds[(v_a_ind_in_tri + 1 + inv) % 3] = tri_b.vertinds[v_b_ind_in_tri];
-        tri_ind2vert_inds_[tri_ind_a][(v_a_ind_in_tri + 1 + inv) % 3] = tri_ind2vert_inds_[tri_ind_b][v_b_ind_in_tri];
-        tri_a.verts[(v_a_ind_in_tri + 1 + inv) % 3] = tri_b.verts[v_b_ind_in_tri];
-        tri_a.neighbours[(v_a_ind_in_tri + 1) % 3] = tri_b.neighbours[(v_b_ind_in_tri + 1 + inv) % 3];
-        tri_a.is_constrained[(v_a_ind_in_tri + 1) % 3] = tri_b.is_constrained[(v_b_ind_in_tri + 1 + inv) % 3];
-        auto old_neighbour = tri_a.neighbours[(v_a_ind_in_tri + 1 + inv) % 3];
-        auto old_edge_state = tri_a.is_constrained[(v_a_ind_in_tri + 1 + inv) % 3];
-        tri_a.neighbours[(v_a_ind_in_tri + 1 + inv) % 3] = tri_ind_b;
-        tri_a.is_constrained[(v_a_ind_in_tri + 1 + inv) % 3] = false;
+        tri_ind2vert_inds_[tri_ind_a][prev(v_a_ind_in_tri)] = tri_ind2vert_inds_[tri_ind_b][v_b_ind_in_tri];
+        tri_a.verts[prev(v_a_ind_in_tri)] = tri_b.verts[v_b_ind_in_tri];
+        tri_a.neighbours[next(v_a_ind_in_tri)] = tri_b.neighbours[prev(v_b_ind_in_tri)];
+        tri_a.is_constrained[next(v_a_ind_in_tri)] = tri_b.is_constrained[prev(v_b_ind_in_tri )];
+        auto old_neighbour = tri_a.neighbours[prev(v_a_ind_in_tri)];
+        auto old_edge_state = tri_a.is_constrained[prev(v_a_ind_in_tri)];
+        tri_a.neighbours[prev(v_a_ind_in_tri)] = tri_ind_b;
+        tri_a.is_constrained[prev(v_a_ind_in_tri)] = false;
 
         //        tri_b.vertinds[(v_b_ind_in_tri + 1 + inv) % 3] = v_a;
-        tri_ind2vert_inds_[tri_ind_b][(v_b_ind_in_tri + 1 + inv) % 3] = v_ind_a;
-        tri_b.verts[(v_b_ind_in_tri + 1 + inv) % 3] = v_a;
-        tri_b.neighbours[(v_b_ind_in_tri + inv) % 3] = old_neighbour;
-        tri_b.is_constrained[(v_b_ind_in_tri + 1 + inv) % 3] = old_edge_state;
-        tri_b.neighbours[(v_b_ind_in_tri + 1 + inv) % 3] = tri_ind_a;
-        tri_b.is_constrained[(v_b_ind_in_tri + 1 + inv) % 3] = false;
+        tri_ind2vert_inds_[tri_ind_b][prev(v_b_ind_in_tri)] = v_ind_a;
+        tri_b.verts[prev(v_b_ind_in_tri)] = v_a;
+        tri_b.neighbours[prev(v_b_ind_in_tri)] = old_neighbour;
+        tri_b.is_constrained[prev(v_b_ind_in_tri)] = old_edge_state;
+        tri_b.neighbours[prev(v_b_ind_in_tri)] = tri_ind_a;
+        tri_b.is_constrained[prev(v_b_ind_in_tri)] = false;
 
     } else {
         //        tri_a.vertinds[(v_a_ind_in_tri + 1 ) % 3] = tri_b.vertinds[v_b_ind_in_tri];
-        tri_ind2vert_inds_[tri_ind_a][(v_a_ind_in_tri + 1) % 3] = tri_ind2vert_inds_[tri_ind_b][v_b_ind_in_tri];
-        tri_a.verts[(v_a_ind_in_tri + 1) % 3] = tri_b.verts[v_b_ind_in_tri];
-        tri_a.neighbours[(v_a_ind_in_tri + 1) % 3] = tri_b.neighbours[(v_b_ind_in_tri) % 3];
-        tri_a.is_constrained[(v_a_ind_in_tri + 1) % 3] = tri_b.is_constrained[v_b_ind_in_tri];
+        tri_ind2vert_inds_[tri_ind_a][next(v_a_ind_in_tri)] = tri_ind2vert_inds_[tri_ind_b][v_b_ind_in_tri];
+        tri_a.verts[next(v_a_ind_in_tri)] = tri_b.verts[v_b_ind_in_tri];
+        tri_a.neighbours[next(v_a_ind_in_tri)] = tri_b.neighbours[(v_b_ind_in_tri)];
+        tri_a.is_constrained[next(v_a_ind_in_tri)] = tri_b.is_constrained[v_b_ind_in_tri];
         auto old_neighbour = tri_a.neighbours[v_a_ind_in_tri];
         auto old_edge_state = tri_a.is_constrained[v_a_ind_in_tri];
         tri_a.neighbours[v_a_ind_in_tri] = tri_ind_b;
-        tri_a.is_constrained[(v_a_ind_in_tri) % 3] = false;
+        tri_a.is_constrained[(v_a_ind_in_tri)] = false;
 
         //        tri_b.vertinds[(v_b_ind_in_tri + 1) % 3] = v_a;
-        tri_ind2vert_inds_[tri_ind_b][(v_b_ind_in_tri + 1) % 3] = v_ind_a;
-        tri_b.verts[(v_b_ind_in_tri + 1) % 3] = v_a;
-        tri_b.neighbours[(v_b_ind_in_tri + 1) % 3] = old_neighbour;
-        tri_b.is_constrained[(v_b_ind_in_tri + 1) % 3] = old_edge_state;
+        tri_ind2vert_inds_[tri_ind_b][next(v_b_ind_in_tri)] = v_ind_a;
+        tri_b.verts[next(v_b_ind_in_tri)] = v_a;
+        tri_b.neighbours[next(v_b_ind_in_tri)] = old_neighbour;
+        tri_b.is_constrained[next(v_b_ind_in_tri)] = old_edge_state;
         tri_b.neighbours[v_b_ind_in_tri] = tri_ind_a;
         tri_b.is_constrained[v_b_ind_in_tri] = false;
     }
-    //! fix neighbours
 
-    if (tri_a.neighbours[(v_a_ind_in_tri + 1) % 3] != -1) {
-        auto& tri_next_next = triangles_[tri_a.neighbours[(v_a_ind_in_tri + 1) % 3]];
-        for (int i = 0; i < 3; ++i) {
-            if (tri_next_next.neighbours[i] == tri_ind_b) {
-                tri_next_next.neighbours[i] = tri_ind_a;
-                break;
-            }
-            if (i == 2) {
-                throw std::runtime_error("no neighbour found!");
-            }
-        }
-    }
-    if (tri_b.neighbours[(v_b_ind_in_tri + 1) % 3] != -1) {
-        auto& tri_next_next = triangles_[tri_b.neighbours[(v_b_ind_in_tri + 1) % 3]];
-        for (int i = 0; i < 3; ++i) {
-            if (tri_next_next.neighbours[i] == tri_ind_a) {
-                tri_next_next.neighbours[i] = tri_ind_b;
-                break;
-            }
-            if (i == 2) {
-                throw std::runtime_error("no neighbour found!");
-            }
-        }
-    }
+
+    // //! fix neighbours
+    fixNeighbours(tri_a, v_a_ind_in_tri, tri_ind_b, tri_ind_a);
+    fixNeighbours(tri_b, v_b_ind_in_tri, tri_ind_a, tri_ind_b);
+
+
+    // if (tri_b.neighbours[next(v_b_ind_in_tri)] != -1) {
+    //     auto& tri_next_next = triangles_[tri_b.neighbours[next(v_b_ind_in_tri)]];
+    //     auto neighbour_to_fix_it = std::find(tri_next_next.neighbours.begin(), tri_next_next.neighbours.end(), tri_ind_a);
+    //     assert(neighbour_to_fix_it != tri_next_next.neighbours.end());
+    //     *neighbour_to_fix_it = tri_ind_b;
+    // }
 }
+
+
+
 
 //! \brief finds existing edges and their corresponding triangles that would intersect with edge \p e
 //! \brief writes the edges into \p intersected_edges and triangles into \p intersected_tri_inds    

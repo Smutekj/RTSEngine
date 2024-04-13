@@ -214,6 +214,8 @@ private:
     TriInd triangleOppositeOfEdge(const Triangle& tri, const EdgeVInd& edge);
     TriInd triangleOppositeOfEdge(const Triangle& tri, const EdgeI& edge) const;
 
+    void fixNeighbours(Triangle& tri, int ind_in_tri, TriInd old_neighbour_ind, TriInd new_neighbour_ind);
+
     void swapConnectingEdge(const TriInd& tri_ind_a, const TriInd& tri_ind_b, int v_ind, Vertex v_a, bool inv = false);
 
     void findIntersectingEdges(const EdgeVInd& e, std::deque<EdgeI>& intersected_edges,

@@ -29,7 +29,7 @@ struct PhysicsSystem : System2{
     PhysicsSystem(ComponentID id);
     ~PhysicsSystem() = default;
     
-    void update();
+    void update(); 
     void avoidWall();
     // void draw(sf::RenderTarget& target);
     void setTransform(const int& e, const TransformComponent& trans){}
