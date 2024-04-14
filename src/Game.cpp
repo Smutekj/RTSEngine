@@ -55,7 +55,7 @@ void Game::removeUnit(Entity e)
     selection_.selected_agents.removeEnt(e.ind);
     auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
     auto &g_comp = gs.getComponent<ComponentID::GRAPHICS, GraphicsComponent>(e);
-    // unit_scene.destroyInstanceOf(g_comp.graphics_ind, g_comp.instance_ind);
+    unit_scene.removeInstance(g_comp.instance_ind);
     p_the_god_->removeEntity(e);
 }
 

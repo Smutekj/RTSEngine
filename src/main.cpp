@@ -81,7 +81,7 @@ int main() {
     Game game(*p_cdt, n_cells, box_size);
     UI ui(window, game, (game.p_the_god_->getSystem<VisionSystem>(ComponentID::VISION)), dbg);
     
-    generateRandomPositionsInCircles(0.01f, box_size, 0, game);
+    generateRandomPositionsInCircles(0.01f, box_size, 500, game);
 
     int frame_i = 0;
     unsigned long long time_of_n_frames = 0;

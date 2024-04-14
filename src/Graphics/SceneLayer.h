@@ -8,11 +8,14 @@
 #include "../core.h"
 #include "../ShaderNames.h"
 #include "../BuildingManager.h"
+#include "../Utils/GayVector.h"
+
 
 #include "Shader.h"
 #include "RenderWindow.hpp"
 #include "Texture.hpp"
 #include "VertexArray.hpp"
+
 
 struct InstancedData
 {
@@ -491,9 +494,9 @@ struct UnitLayer{
         COUNT
     };
 
-    std::array<std::array<InstancedDataUnit, 5000>, static_cast<int>(GraphicsID::COUNT)> id2transforms2;
 
-    std::array<InstancedDataUnit, 5000> transforms;
+    // GayVector<InstancedDataUnit, N_MAX_INSTANCES> transforms;
+    std::array<InstancedDataUnit, N_MAX_INSTANCES> transforms;
     GLuint instanceVBO; 
     int n_instances = 0;
     Square prototype;
@@ -505,7 +508,7 @@ struct UnitLayer{
         // glGenBuffers(1, &instanceVBO);
         glBindVertexArray(prototype.quadVAO2);
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit) * transforms.size(), transforms.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit) * n_instances, transforms.data(), GL_DYNAMIC_DRAW);
         // glBindBuffer(GL_ARRAY_BUFFER, 0);
         // glBindVertexArray(0);
 
@@ -519,6 +522,13 @@ struct UnitLayer{
     
     }
     void draw(GLint target, View& view);
+
+    void removeInstance(int instance_ind){
+
+        n_instances--;
+        transforms.at(instance_ind) = transforms.at(n_instances);
+
+    }
 
 };
 
