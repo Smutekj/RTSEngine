@@ -16,6 +16,7 @@
 #include "Settings.h"
 #include "PathFinding/PathFinder2.h"
 #include "SoundModule.h"
+#include "BuildingManager.h"
 
 #include "Graphics/RenderWindow.hpp"
 #include "Graphics/SceneLayer.h"
@@ -23,6 +24,8 @@
 // #include "Clock.hpp"
 
 class UI;
+
+
 
 inline void selectInRectangle(ECSystem& god, const sf::Vector2f lower_left, const sf::Vector2f upper_right,
                               std::vector<int>& selection, int player_ind) {
@@ -85,10 +88,7 @@ class UnitInitializer ;
 class Game {
 
 public:
-    UnitLayer unit_scene;
-    BuildingLayer building_scene;
-    VisionLayer vision_layer;
-    MapGridLayer map_layer;
+
 
 
     struct Clocks {
@@ -137,6 +137,7 @@ public:
 
 
     std::unique_ptr<MapGrid> p_map_grid;
+    BuildingManager building_manager;
 
     std::shared_ptr<PathFinder2> p_pathfinder_;
     Triangulation& cdt;
@@ -150,6 +151,11 @@ public:
     Buildings buildings;
     std::deque<sf::Vector2f> path;
     std::deque<Edgef> portals;
+
+    UnitLayer unit_scene;
+    BuildingLayer building_scene;
+    VisionLayer vision_layer;
+    MapGridLayer map_layer;
 
     Game(Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2f box_size);
 

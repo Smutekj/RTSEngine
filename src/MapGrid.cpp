@@ -878,14 +878,16 @@ void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f ce
     const auto up_left_cell_x = center_cell_coords.x - n / 2;
     const auto up_left_cell_y = center_cell_coords.y - m / 2;
 
-    const auto wtf_x = (n - horizontal_line_length) / 2;
-    const auto wtf_y = (m - vertical_line_length) / 2;
+    int horizontal_line_length = n - 2*corner_size;
+    int vertical_line_length = m - 2*corner_size;
+    const auto wtf_x = corner_size;
+    const auto wtf_y = corner_size;
     const float sqrt2 = M_SQRT2;
     const float diagonal_lenght = std::sqrt(wtf_x * wtf_x + wtf_y * wtf_y) * cell_size.x;
 
     edges[0].from = {(up_left_cell_x + wtf_x), up_left_cell_y};
     edges[0].t = {1, 0};
-    edges[0].l = (n - 2 * wtf_x) * cell_size.x;
+    edges[0].l = (horizontal_line_length) * cell_size.x;
 
     edges[1].from = {(up_left_cell_x + n - wtf_x), up_left_cell_y};
     edges[1].t = {1 / sqrt2, 1 / sqrt2};
@@ -893,7 +895,7 @@ void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f ce
 
     edges[2].from = {(up_left_cell_x + n), up_left_cell_y + wtf_y};
     edges[2].t = {0, 1};
-    edges[2].l = (m - 2 * wtf_y) * cell_size.y;
+    edges[2].l = (vertical_line_length) * cell_size.y;
 
     edges[3].from = {up_left_cell_x + n, up_left_cell_y + wtf_y + vertical_line_length};
     edges[3].t = {-1 / sqrt2, 1 / sqrt2};
@@ -901,7 +903,7 @@ void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f ce
 
     edges[4].from = {up_left_cell_x + wtf_x + horizontal_line_length, up_left_cell_y + m};
     edges[4].t = {-1, 0};
-    edges[4].l = (n - 2 * wtf_x) * cell_size.x;
+    edges[4].l = (horizontal_line_length) * cell_size.x;
 
     edges[5].from = {up_left_cell_x + wtf_x, up_left_cell_y + m};
     edges[5].t = {-1 / sqrt2, -1 / sqrt2};
@@ -909,18 +911,15 @@ void Building::intitializeEdges(sf::Vector2i center_cell_coords, sf::Vector2f ce
 
     edges[6].from = {up_left_cell_x, up_left_cell_y + wtf_y + vertical_line_length};
     edges[6].t = {0, -1};
-    edges[6].l = (m - 2 * wtf_y) * cell_size.x;
+    edges[6].l = (vertical_line_length) * cell_size.x;
 
     edges[7].from = {up_left_cell_x, up_left_cell_y + wtf_y};
     edges[7].t = {1 / sqrt2, -1 / sqrt2};
     edges[7].l = diagonal_lenght;
 
-    // contour.setPointCount(8);
-    // contour.setFillColor(sf::Color::Red);
     for (int i = 0; i < 8; ++i)
     {
         edges[i].from *= static_cast<int>(cell_size.x);
-        // contour.setPoint(i, static_cast<sf::Vector2f>(edges[i].from));
     }
 }
 
@@ -930,8 +929,11 @@ void Building::intitializeEdges2(sf::Vector2i center_cell_coords, sf::Vector2f c
     const auto up_left_cell_x = center_cell_coords.x - n / 2;
     const auto up_left_cell_y = center_cell_coords.y - m / 2;
 
-    const auto wtf_x = (n - horizontal_line_length) / 2;
-    const auto wtf_y = (m - vertical_line_length) / 2;
+    int horizontal_line_length = n - 2*corner_size;
+    int vertical_line_length = m - 2*corner_size;
+
+    const auto wtf_x = corner_size;
+    const auto wtf_y = corner_size;
     const float sqrt2 = M_SQRT2;
     const float diagonal_lenght = std::sqrt(wtf_x * wtf_x + wtf_y * wtf_y) * cell_size.x;
 
@@ -1387,15 +1389,95 @@ bool MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_
         }
     }
 
-    //        updateBoundaryTypes();
-    auto new_building = addBuildingEdgesToTriangulation(building_center, building_size, cdt);
+    auto new_building = addBuildingEdgesToTriangulation(building_center, building_size, 1, cdt);
     assert(cdt.triangulationIsConsistent());
     buildings_.push_back(new_building);
-    // map_texture.draw(buildings.m_vertices);
     return true;
 }
 
-Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size,
+
+bool MapGrid::buildBuilding(sf::Vector2f building_center, int building_id, Triangulation &cdt)
+{
+    
+    const auto building_size = p_building_manager->getSize(building_id);
+    const auto corner_size = p_building_manager->getCornerSize(building_id);
+
+    auto center_cell_coords = cellCoords(building_center);
+    auto lower_left_cell_coords = center_cell_coords - building_size / 2;
+    bool all_cells_on_ground = true;
+    for (int i = 0; i < building_size.x; ++i)
+    {
+        for (int j = 0; j < building_size.y; ++j)
+        {
+            auto i_building = center_cell_coords.x - building_size.x / 2 + i;
+            auto j_building = center_cell_coords.y - building_size.y / 2 + j;
+            auto cell_index = n_cells_.x * j_building + i_building;
+            if (i_building >= n_cells_.x - 1 or j_building >= n_cells_.y - 1 or i_building <= 0 or j_building <= 0 or
+                tiles.at(cell_index) != TileType::GROUND)
+            {
+                all_cells_on_ground = false;
+                break;
+            }
+        }
+    }
+
+    if (!all_cells_on_ground)
+    {
+        return false;
+    }
+    for (int j = 0; j < building_size.y; ++j)
+    {
+        for (int i = 0; i < building_size.x; ++i)
+        {
+            auto i_building = center_cell_coords.x - building_size.x / 2 + i;
+            auto j_building = center_cell_coords.y - building_size.y / 2 + j;
+            auto cell_index = n_cells_.x * j_building + i_building;
+            tiles[cell_index] = TileType::BUILDING;
+            cell2building_ind_[cell_index] = buildings_.size();
+
+            if (j == 0)
+            {
+                grid2walltype[cell_index] = WallType::SQUAREUP;
+                if (i == 0)
+                {
+                    grid2walltype[cell_index] = WallType::ULTRIANGLE;
+                }
+                else if (i == building_size.x - 1)
+                {
+                    grid2walltype[cell_index] = WallType::URTRIANGLE;
+                }
+            }
+            else if (j == building_size.y - 1)
+            {
+                grid2walltype[cell_index] = WallType::SQUAREDOWN;
+                if (i == 0)
+                {
+                    grid2walltype[cell_index] = WallType::DLTRIANGLE;
+                }
+                else if (i == building_size.x - 1)
+                {
+                    grid2walltype[cell_index] = WallType::DRTRIANGLE;
+                }
+            }
+            if (i == 0 and (j > 0 and j < building_size.y - 1))
+            {
+                grid2walltype[cell_index] = WallType::SQUARELEFT;
+            }
+            else if (i == building_size.x - 1 and (j > 0 and j < building_size.y - 1))
+            {
+                grid2walltype[cell_index] = WallType::SQUARERIGHT;
+            }
+        }
+    }
+
+    auto new_building = addBuildingEdgesToTriangulation(building_center, building_size, corner_size, cdt);
+    assert(cdt.triangulationIsConsistent());
+    buildings_.push_back(new_building);
+    return true;
+}
+
+
+Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size, int corner_size,
                                                   Triangulation &cdt)
 {
     auto center_cell_coords = cellCoords(building_center);
@@ -1404,6 +1486,7 @@ Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, 
     Building b;
     b.n = building_size.x;
     b.m = building_size.y;
+    b.corner_size = corner_size;
     b.intitializeEdges(center_cell_coords, cell_size_);
 
     const auto ix7 = cellCoords(b.edges.at(7).from + static_cast<sf::Vector2i>(cell_size_/2.f)).x;
@@ -1444,7 +1527,7 @@ Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, 
     std::vector<EdgeVInd> new_constraints(0);
 
     int last_vertex_ind = cdt.vertices_.size() - 1;
-    int last_edge_ind = cdt.vertices_.size() - 1;
+
 
     for (int i = 0; i < 4; ++i)
     {
@@ -1490,7 +1573,6 @@ Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, 
 
         auto intersection_data1 = cdt.insertVertexAndGetData(b.edges[2 * i + inv].from, true);
         auto intersection_data2 = cdt.insertVertexAndGetData(b.edges[2 * i + !inv].from, true);
-
         bool vertex_1_exitsts = intersection_data1.overlapping_vertex != -1;
         bool vertex_1_is_inside_edge = intersection_data1.overlapping_edge.from != -1;
 
@@ -1604,9 +1686,8 @@ Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, 
         std::sort(edges_on_line2.begin(), edges_on_line2.end(),
                   [](const Edgef &e1, const Edgef &e2)
                   { return e1.from.x < e2.from.x; });
-    }
 
-    const auto n_edges = p_edges_->edges2_.size();
+    }
 
     for (const auto new_edge : new_constraints)
     {
@@ -1671,7 +1752,7 @@ void MapGrid::addAllStaticEdgesToTriangulation(Triangulation &cdt)
     for (const auto &building : buildings_)
     {
         const auto building_center = static_cast<sf::Vector2f>(building.calcCenter());
-        addBuildingEdgesToTriangulation(building_center, {building.n, building.m}, cdt);
+        addBuildingEdgesToTriangulation(building_center, {building.n, building.m}, building.corner_size, cdt);
     }
 }
 
@@ -1680,7 +1761,7 @@ void MapGrid::addAllBuildingsToTriangulation(Triangulation &cdt)
     for (const auto &building : buildings_)
     {
         const auto building_center = static_cast<sf::Vector2f>(building.calcCenter());
-        addBuildingEdgesToTriangulation(building_center, {building.n, building.m}, cdt);
+        addBuildingEdgesToTriangulation(building_center, {building.n, building.m}, building.corner_size, cdt);
     }
 }
 

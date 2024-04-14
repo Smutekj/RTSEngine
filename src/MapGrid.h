@@ -2,13 +2,13 @@
 #define BOIDS_MAPGRID_H
 
 #include "Graphics/RenderTexture.hpp"
-
 #include "Graphics/VertexArray.hpp"
 #include "Graphics/RectangleShape.hpp"
 #include "Graphics/ConvexShape.hpp"
 
 #include "Utils/Grid.h"
 #include "core.h"
+#include "BuildingManager.h"
 
 #include "EdgesFinder1D.h"
 #include "Edges.h"
@@ -23,6 +23,7 @@ namespace Mesh{
 class Triangulation;
 }
 
+
 struct Graph;
 
 struct Building {
@@ -31,8 +32,7 @@ struct Building {
     std::array<int, 8> edge_grid_inds;
     int n = 4;
     int m = 4;
-    int horizontal_line_length = 2;
-    int vertical_line_length = 2;
+    int corner_size = 2;
     u_int16_t graphics_id = 0;
     Graph* p_graph = nullptr;
     int instance_id = -1;
@@ -105,6 +105,8 @@ class MapGrid : public Grid {
     sf::VertexArray walls_vertices_;
     std::vector<sf::Color> component2color_;
 
+    BuildingManager* p_building_manager;
+
     std::vector<Building> buildings_;
     std::vector<int> cell2building_ind_;
     std::vector<TriInd> component2building_ind_;
@@ -149,10 +151,11 @@ class MapGrid : public Grid {
 
     void buildWall(sf::Vector2f wall_center, sf::Vector2i square_size);
     bool buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation& cdt);
+    bool buildBuilding(sf::Vector2f building_center, int building_id, Triangulation& cdt);
 
     void addAllStaticEdgesToTriangulation(Triangulation& cdt);
     void addAllBuildingsToTriangulation(Triangulation& cdt);
-    Building addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size,
+    Building addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size, int corner_size,
                                              Triangulation& cdt);
     void removeBuilding(int building_index, Triangulation& cdt);
 

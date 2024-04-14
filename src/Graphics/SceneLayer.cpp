@@ -304,7 +304,29 @@ void BuildingLayer::draw(sf::RenderWindow &window)
     }
 }
 
-BuildingLayer::BuildingLayer()
+void BuildingLayer::createBuildingLayout(sf::Vector2i size, int corner_size, int g_id)
+{
+
+    auto &b_contour = id2squares[g_id].vertices;
+    b_contour.resize(10);
+    Building b({0, 0}, {6, 6});
+    b.n = size.x;
+    b.m = size.y;
+    b.corner_size = corner_size;
+    b.intitializeEdges2({0, 0}, {5, 5});
+    b_contour.at(0).pos = {0, 0};
+    int i = 1;
+    for (auto &edge : b.edges)
+    {
+        b_contour.at(i).pos = asFloat(edge.from) / 10.f;
+        b_contour.at(i).uv_coord = (b_contour.at(i).pos + sf::Vector2f(1, 1)) / 2.f;
+        b_contour.at(i).color = sf::Color::Red;
+        i++;
+    }
+    b_contour.at(9) = b_contour.at(1);
+}
+
+BuildingLayer::BuildingLayer(BuildingManager& bm) : p_building_manager(&bm)
 {
 
     id2shader[GraphicsID::BUILDING1] = {s_vertexShaderSource_instanced, s_framgentShaderSourceVoronoi, "Voronoi"};
@@ -318,25 +340,10 @@ BuildingLayer::BuildingLayer()
     id2squares[0] = (Square({0, 0}, {1, 1}, {255, 0, 0}, 10));
     id2squares[1] = (Square({0, 0}, {1, 1}, {255, 0, 0}, 10));
 
-    auto &b_contour = id2squares[0].vertices;
-    b_contour.resize(10);
-
-    Building b({0, 0}, {6, 6});
-    b.n = 8;
-    b.m = 8;
-    b.intitializeEdges2({0, 0}, {5, 5});
-    b_contour.at(0).pos = {0, 0};
-    int i = 1;
-    for (auto &edge : b.edges)
-    {
-        b_contour.at(i).pos = asFloat(edge.from) / 10.f;
-        b_contour.at(i).uv_coord = (b_contour.at(i).pos + sf::Vector2f(1, 1)) / 2.f;
-        b_contour.at(i).color = sf::Color::Red;
-        i++;
+    const auto &building_data = p_building_manager->getData();
+    for(const auto& [id, data] : building_data){
+        createBuildingLayout(data.size, data.corner_size, data.graphical_id);
     }
-    b_contour.at(9) = b_contour.at(1);
-
-    id2squares[1].vertices = b_contour;
 
     for (int g_id = 0; g_id < static_cast<int>(GraphicsID::COUNT); ++g_id)
     {
@@ -383,21 +390,20 @@ void MapGridLayer::updateFromMap()
             const sf::Vector2f position = {i * cell_size.x, j * cell_size.y};
             if (tiles.at(cell_index) == MapGrid::TileType::WALL)
             {
-                id2transforms2[0].push_back({position, {0,0}, sf::Color::Blue});
-            }else{
-                id2transforms2[0].push_back({position, {0,0}, sf::Color::Transparent});
+                id2transforms2[0].push_back({position, {0, 0}, sf::Color::Blue});
+            }
+            else
+            {
+                id2transforms2[0].push_back({position, {0, 0}, sf::Color::Transparent});
             }
             id2n_instances.at(0)++;
         }
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, id2instanceVBO[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataTiles)*id2transforms2[0].size(), id2transforms2[0].data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataTiles) * id2transforms2[0].size(), id2transforms2[0].data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
 }
-
 
 MapGridLayer::MapGridLayer()
 {
@@ -413,11 +419,12 @@ MapGridLayer::MapGridLayer()
     id2squares.resize(5);
 
     id2squares[0] = (Square({0, 0}, {Geometry::CELL_SIZE, Geometry::CELL_SIZE}, {255, 0, 0}, 6));
-    for(auto& vertex : id2squares[0].vertices){
+    for (auto &vertex : id2squares[0].vertices)
+    {
         vertex.pos *= static_cast<float>(Geometry::CELL_SIZE);
-        vertex.pos += sf::Vector2f(Geometry::CELL_SIZE/2.f, Geometry::CELL_SIZE/2.f);
+        vertex.pos += sf::Vector2f(Geometry::CELL_SIZE / 2.f, Geometry::CELL_SIZE / 2.f);
     }
-    
+
     id2squares[1] = (Square({0, 0}, {1, 1}, {255, 0, 0}, 6));
     id2squares[1].vertices.resize(3);
     id2squares[1].vertices[0].pos = {0, 0};
@@ -434,7 +441,6 @@ MapGridLayer::MapGridLayer()
         auto &instanceVBO = id2instanceVBO.at(g_id);
         auto &transforms = id2transforms2.at(g_id);
         auto &prototype = id2squares.at(g_id);
-
 
         glGenBuffers(1, &instanceVBO);
         glBindVertexArray(prototype.quadVAO2);
@@ -458,7 +464,6 @@ MapGridLayer::MapGridLayer()
         glBindVertexArray(0);
     }
 }
-
 
 void MapGridLayer::draw(sf::RenderWindow &window)
 {
@@ -708,12 +713,10 @@ VisionLayer::VisionLayer()
     glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-
 }
 
-void VisionLayer::drawFOW(sf::RenderWindow& window, sf::VertexArray& fow_verticess){
-
+void VisionLayer::drawFOW(sf::RenderWindow &window, sf::VertexArray &fow_verticess)
+{
 
     const auto height0 = 1920;
     const auto width0 = 1080;
@@ -777,8 +780,7 @@ void VisionLayer::drawFOW(sf::RenderWindow& window, sf::VertexArray& fow_vertice
     glBindVertexArray(0);
 
     // window.view.matrix = old_view_matrix;
-    window.view.zoom(1.f/zoom_factor);
-
+    window.view.zoom(1.f / zoom_factor);
 }
 
 void VisionLayer::draw2(sf::RenderWindow &window)
@@ -880,8 +882,6 @@ void VisionLayer::setup()
         vs.drawStripe(stripes_.at(stripe_ind), y_pos, fow_vertices, {vs.grey_color}, last_ind_s);
         vs.drawStripe(revealed_stripes_.at(stripe_ind), y_pos, revealed_fow_vertices, sf::Color::Black, last_ind_rs);
     }
-
-
 
     glBindBuffer(GL_ARRAY_BUFFER, revealed_fow_vertices.quadVBO);
     glBufferData(GL_ARRAY_BUFFER, 5 * sizeof(float) * revealed_fow_vertices.getVertexCount(), &revealed_fow_vertices[0], GL_DYNAMIC_DRAW);

@@ -78,8 +78,9 @@ void Game::createUnitType(const float max_speed, const float radius)
 }
 
 Game::Game(Triangulation &cdt, sf::Vector2i n_cells, sf::Vector2f box_size)
-    : box_size(box_size), cdt(cdt)
+    : box_size(box_size), cdt(cdt), building_scene(building_manager), building_manager()
 {
+
 
     mouse_selection.setFillColor({0, 0, 255, 69});
     mouse_selection.setOutlineThickness(5);
@@ -88,6 +89,9 @@ Game::Game(Triangulation &cdt, sf::Vector2i n_cells, sf::Vector2f box_size)
 
     p_map_grid = std::make_unique<MapGrid>(n_cells, box_size, cell_size);
     p_map_grid->getEdges()->vertices_ = cdt.vertices_;
+    p_map_grid->p_building_manager = &building_manager;
+    building_scene.p_building_manager = &building_manager;
+
     map_layer.p_map_grid = p_map_grid.get();
 
     p_the_god_ = std::make_unique<ECSystem>(*p_map_grid->getEdges());
@@ -291,7 +295,7 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
 
             if (event.type == sf::Event::MouseButtonReleased)
             {
-                p_map_grid->buildBuilding(mouse_position, {8, 8}, cdt);
+                p_map_grid->buildBuilding(mouse_position, 1, cdt);
                 auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
                 p_map_grid->buildings_.back().graphics_id = rand() % 2;
                 building_scene.addBuilding(p_map_grid->buildings_.back());
@@ -416,10 +420,11 @@ void Game::parseInput(sf::RenderWindow &window, UI &ui)
         {
             auto [x, y] = randPoint(0, Geometry::BOX[0], 0, Geometry::BOX[1]);
             // auto lower_left_cell_coord = p_map_grid->drawProposedBuilding(window, {x, y}, {4, 4});
-            if (p_map_grid->buildBuilding({x, y}, {8, 8}, cdt))
+            int building_id = rand() % 2;
+            if (p_map_grid->buildBuilding({x, y}, building_id, cdt))
             {
                 auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
-                p_map_grid->buildings_.back().graphics_id = rand() % 2;
+                p_map_grid->buildings_.back().graphics_id = building_manager.getGID(building_id);
                 building_scene.addBuilding(p_map_grid->buildings_.back());
             }
         }
@@ -532,6 +537,6 @@ void Game::draw(sf::RenderWindow &window)
     p_map_grid->draw(window);
     // map_layer.draw(window);
 
-    vision_layer.setup();
-    vision_layer.draw2(window);
+    // vision_layer.setup();
+    // vision_layer.draw2(window);
 }

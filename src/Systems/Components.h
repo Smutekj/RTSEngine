@@ -111,7 +111,7 @@ struct PathFinderComponent : Component<ComponentID::PATHFINDING>
 
     int n_steps_since_all_in_front_standing = 0;
     float radius = RHARD;
-    float max_speed = 50.f;
+    float max_speed = 10.f;
     float turn_rate = 5; // degrees / frame 
     float desired_angle = 0; // degrees
     bool needs_update = true;

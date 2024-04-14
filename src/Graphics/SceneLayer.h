@@ -7,6 +7,7 @@
 
 #include "../core.h"
 #include "../ShaderNames.h"
+#include "../BuildingManager.h"
 
 #include "Shader.h"
 #include "RenderWindow.hpp"
@@ -484,13 +485,16 @@ struct BuildingLayer : public SquareScene
     u_int64_t frame_i = 0;
 
     std::unordered_map<GraphicsID, Shader> id2shader;
+    BuildingManager* p_building_manager = nullptr;
 
-
-    BuildingLayer();
+    BuildingLayer(BuildingManager& bm);
 
     void addBuilding(Building &b);
     void removeBuilding(Building &b);
     virtual void draw(sf::RenderWindow &window);
+
+    private:
+    void createBuildingLayout(sf::Vector2i size, int corner_size, int g_id);
 };
 
 class MapGrid;
