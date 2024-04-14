@@ -3,6 +3,7 @@
     const auto s_framgentShaderSource_instanced = "/home/smutekj/projects/RTSEngineWithOpenGL/ShadersTmp/instanced.frag";
     
     const auto s_vertexShaderSource_instanced = "/home/smutekj/projects/RTSEngineWithOpenGL/ShadersTmp/instanced.vert";
+    const auto s_vertexShaderSource_unit    = "/home/smutekj/projects/RTSEngineWithOpenGL/ShadersTmp/instancedUnit.vert";
     const auto s_vertexShaderSourceViewTransform = "/home/smutekj/projects/RTSEngineWithOpenGL/ShadersTmp/vshadeViewTransform.vert";
     const auto s_vertexShaderTiles = "/home/smutekj/projects/RTSEngineWithOpenGL/ShadersTmp/instancedTile.vert";
     

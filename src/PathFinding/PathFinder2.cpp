@@ -130,7 +130,8 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
         auto data = to_update_pq.top();
         for (int j = 0; j < data.inds_to_update.size(); ++j)
         {
-            data.r_starts.at(j) = comps[data.inds_to_update[j]].transform.r;
+            auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[j]);
+            data.r_starts.at(j) = comps[compvec_ind].transform.r;
         }
         futures_.at(thread_id) = std::async(std::launch::async, do_pathfinding, data, thread_id);
         thread_status_.at(thread_id) = THREAD_STATUS::RUNNING;
@@ -164,7 +165,8 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
                 auto data = to_update_pq.top();
                 for (int i = 0; i < data.inds_to_update.size(); ++i)
                 {
-                    data.r_starts[i] = comps.at(data.inds_to_update.at(i)).transform.r;
+                    auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[i]);
+                    data.r_starts[i] = comps.at(compvec_ind).transform.r;
                 }
 
                 futures_[thread_id] = std::async(std::launch::async, do_pathfinding, data, thread_id);
@@ -602,10 +604,10 @@ void PathFinder2::issuePaths2(std::vector<PathFinderComponent> &comps,
         //     continue;
         // }
 
-        if (!comp.needs_update)
-        { //! no need to update something twice
-            continue;
-        }
+        // if (!comp.needs_update)
+        // { //! no need to update something twice
+        //     continue;
+        // }
 
         comp.needs_update = false;
 

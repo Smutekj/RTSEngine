@@ -17,8 +17,17 @@
 struct InstancedData
 {
     float angle = 0.f;
-    sf::Vector2f scale = {1.f, 1.f};
+    sf::Vector2f scale = {1,1};
     sf::Vector2f trans = {0, 0};
+};
+
+struct InstancedDataUnit
+{
+    float angle = 0.f;
+    float scale = 1.f;
+    sf::Vector2f trans = {0, 0};
+    sf::Vector2f tex_coord = {0,0};
+    sf::Color color = sf::Color::Red;
 };
 
 struct InstancedDataTiles
@@ -344,45 +353,6 @@ struct Graph
 constexpr int N_MAX_INSTANCES = 20000;
 constexpr int N_MAX_GRAPHS = 20000;
 
-struct Penis
-{
-    enum class Names
-    {
-        A,
-        B
-    };
-};
-
-template <int MAX_SIZE, int MAX_INDEX, class DataType>
-struct ArrayMap
-{
-
-    int n_data = 0;
-    DataType data[MAX_SIZE];
-
-    int data2entity[MAX_SIZE];
-    int inds_in_data[MAX_INDEX];
-
-    DataType operator[](int index)
-    {
-        return data[index];
-    }
-
-    void erase(int entity_ind)
-    {
-        assert(entity_ind < MAX_INDEX);
-
-        auto ind = inds_in_data[entity_ind];
-        auto moved_entity = data2entity[n_data - 1];
-
-        data2entity[ind] = data2entity[n_data - 1];
-        data[ind] = data[n_data - 1];
-
-        inds_in_data[moved_entity] = ind;
-        n_data--;
-    }
-};
-
 struct SquareScene
 {
     std::vector<std::vector<int>> graph_node2children;
@@ -453,22 +423,6 @@ enum class ShaderType{
     BASIC
 };
 
-// struct ShaderData{
-//     std::vector<std::string> uniform_names;
-//     std::vector<void*> p_values;
-     
-// }
-
-// struct ShaderManager{
-//     std::unordered_map<ShaderType, ShaderData> data;
-//     std::unordered_map<ShaderType, Shader> shaders;
-
-
-//     ShaderManager(){
-        
-//     }
-
-// };
 
 
 struct BuildingLayer : public SquareScene
@@ -526,10 +480,9 @@ struct MapGridLayer : public SquareScene
 };
 
 
-struct UnitLayer : public SquareScene {
+struct UnitLayer{
 
     std::unordered_map<int, Shader> id2shader;
-
 
     enum class GraphicsID : int
     {
@@ -538,10 +491,34 @@ struct UnitLayer : public SquareScene {
         COUNT
     };
 
+    std::array<std::array<InstancedDataUnit, 5000>, static_cast<int>(GraphicsID::COUNT)> id2transforms2;
+
+    std::array<InstancedDataUnit, 5000> transforms;
+    GLuint instanceVBO; 
+    int n_instances = 0;
+    Square prototype;
+
     UnitLayer();
 
-    virtual void draw(GLint target, View& view);
+    void initialize(){
 
+        // glGenBuffers(1, &instanceVBO);
+        glBindVertexArray(prototype.quadVAO2);
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit) * transforms.size(), transforms.data(), GL_DYNAMIC_DRAW);
+        // glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // glBindVertexArray(0);
+
+        // glGenBuffers(1, &instanceVBO);
+        glBindVertexArray(prototype.quadVAO2);
+        glBindBuffer(GL_ARRAY_BUFFER, prototype.quadVBO2);
+        glBufferData(GL_ARRAY_BUFFER, 7 * sizeof(float) * prototype.vertices.size(), prototype.vertices.data(), GL_DYNAMIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    
+    }
+    void draw(GLint target, View& view);
 
 };
 

@@ -2,88 +2,16 @@
 
 
 
-void makeUnitFromComponents(SquareScene& scene, GraphicsComponent& comp){
+void makeUnitFromComponents(UnitLayer& scene, GraphicsComponent& comp){
     
-    //! take one free graph index and activate it 
-    Graph* p_g;
-    if(!scene.free_graph_inds.empty()){
-        auto new_graph_ind_it = scene.free_graph_inds.begin();
-        p_g = &scene.graphs.at(*new_graph_ind_it);
+ 
+    const auto instance_id = scene.n_instances;
+    comp.instance_ind = instance_id;
 
-        scene.ind_in_active_graph_inds.at(*new_graph_ind_it) = scene.active_graph_inds.size();
-        scene.active_graph_inds.push_back(*new_graph_ind_it);    
-        scene.free_graph_inds.erase(new_graph_ind_it);
-    }else{
-        throw std::runtime_error("ran out of graph slots!");
-    }
-    auto& g = *p_g;
-
-    auto* body_square = new GraphicalEntity(scene.id2squares.at(0));
-    auto* weapon_square = new GraphicalEntity(scene.id2squares.at(1));
-    auto* shield_square = new GraphicalEntity(scene.id2squares.at(2));
-    body_square->id = 0;
-    if(comp.player_ind == 1){}
-    weapon_square->id = 1;
-    shield_square->id = 2;
-
-    Node* root = new Node();
-    Node* child = new Node();
-    Node* child2 = new Node();
-    root->edges.emplace_back(child, scene.movers[0].get());
-    root->edges.emplace_back(child2, scene.movers[1].get());
-
-    root->entity = body_square;
-    child->entity = weapon_square;
-    child2->entity = shield_square;
-
-    child->parent = root; 
-    child2->parent = root;
-    g.root = root;    
-
-    auto parent_id = body_square->id;
-    auto child_id = weapon_square->id;
-    auto child2_id = shield_square->id;
-
-    body_square->instance_id = scene.id2n_instances.at(parent_id);
-    scene.id2n_instances.at(parent_id)++;
-    weapon_square->instance_id = scene.id2n_instances.at(child_id);
-    scene.id2n_instances.at(child_id)++;
-    shield_square->instance_id = scene.id2n_instances.at(child2_id);
-    scene.id2n_instances.at(child2_id)++;
-
-    comp.graphics_ind = 0;
-    comp.instance_ind = scene.id2n_instances.at(parent_id)-1;
-    comp.p_graph = p_g;
-
-
-    body_square->s = &scene.id2squares.at(child_id);
-    weapon_square->s = &scene.id2squares.at(parent_id);
-    shield_square->s = &scene.id2squares.at(child2_id);
-
-    body_square->s->trans2.trans = comp.transform.r;
-    body_square->s->trans2.scale = {3.f, 3.f};
-    weapon_square->s->trans2.trans = {0,0};
-    shield_square->s->trans2.trans = {0,0};
-    body_square->s->trans2.angle = comp.transform.angle;
-    weapon_square->s->trans2.angle = 0;
-    shield_square->s->trans2.angle = 0;
-
-    //! copy square initial transform into transform buffer
-    scene.id2transforms.at(parent_id).at(body_square->instance_id) = body_square->s->trans2;
-    scene.id2transforms.at(child_id).at(weapon_square->instance_id) = weapon_square->s->trans2;
-    scene.id2transforms.at(child2_id).at(shield_square->instance_id) = shield_square->s->trans2;
-    
-    body_square->transform = &(scene.id2transforms.at(parent_id).at(body_square->instance_id)); 
-    weapon_square->transform = &scene.id2transforms.at(child_id).at(weapon_square->instance_id); 
-    shield_square->transform = &scene.id2transforms.at(child2_id).at(shield_square->instance_id); 
-
-    scene.id2graphical_entities.at(parent_id).at(body_square->instance_id) = body_square;
-    scene.id2graphical_entities.at(child_id).at(weapon_square->instance_id) = (weapon_square);
-    scene.id2graphical_entities.at(child2_id).at(shield_square->instance_id) = (shield_square);
-
-    scene.id_instance2graph.at(parent_id).at(body_square->instance_id) = {&g, root};
-    scene.id_instance2graph.at(child_id).at(weapon_square->instance_id) = {&g, child};
-    scene.id_instance2graph.at(child2_id).at(shield_square->instance_id) = {&g, child2};    
+    scene.transforms[instance_id].trans = comp.transform.r;
+    scene.transforms[instance_id].angle = comp.transform.angle;  
+    scene.transforms[instance_id].scale = comp.radius;  
+    scene.n_instances++;
 }
 
 
@@ -122,8 +50,14 @@ void GraphicsSystem::update()
     auto &components = static_cast<CompArray &>(*p_comps_).components_;
     for (auto &comp : components)
     {   
-        p_graphics_layer->id2transforms.at(comp.graphics_ind).at(comp.instance_ind).trans = comp.transform.r;
-        p_graphics_layer->id2transforms.at(comp.graphics_ind).at(comp.instance_ind).angle = comp.transform.angle; 
+        p_graphics_layer->transforms.at(comp.instance_ind).trans = comp.transform.r;
+        p_graphics_layer->transforms.at(comp.instance_ind).angle = comp.transform.angle; 
+        
+        sf::Color c = sf::Color::Red;
+        if(comp.player_ind == 1){
+            c = sf::Color::Blue;
+        }
+        p_graphics_layer->transforms.at(comp.instance_ind).color = c; 
         
         //! why the fuck is this here? :D :D 
         comp.transform.r += comp.transform.vel * dt;
@@ -131,7 +65,7 @@ void GraphicsSystem::update()
     
 
     }
-    p_graphics_layer->update();
+    // p_graphics_layer->update();
 
     addOnGrid();
 

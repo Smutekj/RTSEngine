@@ -53,7 +53,7 @@ void SeekSystem::update()
     auto &components = static_cast<CompArray &>(*p_comps_.get()).components_;
     p_ns_->update(components);
 
-    //! remove death agents ... (this should be done somewhere else i guess?)
+    //! remove dead agents ... (this should be done somewhere else i guess?)
     auto &groups = p_pathfinder_->to_update_groups_;
     for (auto &group_data : groups)
     {
@@ -302,6 +302,7 @@ void SeekSystem::updateTarget(PathFinderComponent &comp, const sf::Vector2f r)
         comp_inds_to_update_.push(compvecInd(comp));
     }
 }
+
 
 void SeekSystem::updateSharedData(const std::array<SharedData, N_MAX_ENTITIES> &new_data, const std::vector<Entity> &active_entity_inds)
 {

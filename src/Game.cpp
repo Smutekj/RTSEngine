@@ -55,7 +55,7 @@ void Game::removeUnit(Entity e)
     selection_.selected_agents.removeEnt(e.ind);
     auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
     auto &g_comp = gs.getComponent<ComponentID::GRAPHICS, GraphicsComponent>(e);
-    unit_scene.destroyInstanceOf(g_comp.graphics_ind, g_comp.instance_ind);
+    // unit_scene.destroyInstanceOf(g_comp.graphics_ind, g_comp.instance_ind);
     p_the_god_->removeEntity(e);
 }
 
@@ -526,7 +526,7 @@ void Game::draw(sf::RenderWindow &window)
     // p_fow_->draw(this->selected_player, window);
     // drawPath(window, path, portals);
 
-    unit_scene.update();
+    // unit_scene.update();
     unit_scene.initialize();
     unit_scene.draw(0, window.view);
 

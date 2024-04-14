@@ -6,40 +6,6 @@
 #include <fstream>
 #include <string>
 
-// ////////////////////////////////////////////////////////////
-// Transform Transform::getInverse() const
-// {
-//     // Compute the determinant
-//     float det = matrix[0] * (matrix[15] * matrix[5] - matrix[7] * matrix[13]) -
-//                 matrix[1] * (matrix[15] * matrix[4] - matrix[7] * matrix[12]) +
-//                 matrix[3] * (matrix[13] * matrix[4] - matrix[5] * matrix[12]);
-
-//     // Compute the inverse if the determinant is not zero
-//     // (don't use an epsilon because the determinant may *really* be tiny)
-//     if (det != 0.f)
-//     {
-//         return Transform( (matrix[15] * matrix[5] - matrix[7] * matrix[13]) / det,
-//                          -(matrix[15] * matrix[4] - matrix[7] * matrix[12]) / det,
-//                           (matrix[13] * matrix[4] - matrix[5] * matrix[12]) / det,
-//                          -(matrix[15] * matrix[1] - matrix[3] * matrix[13]) / det,
-//                           (matrix[15] * matrix[0] - matrix[3] * matrix[12]) / det,
-//                          -(matrix[13] * matrix[0] - matrix[1] * matrix[12]) / det,
-//                           (matrix[7]  * matrix[1] - matrix[3] * matrix[5])  / det,
-//                          -(matrix[7]  * matrix[0] - matrix[3] * matrix[4])  / det,
-//                           (matrix[5]  * matrix[0] - matrix[1] * matrix[4])  / det);
-//     }
-//     else
-//     {
-//         return Identity;
-//     }
-// }
-
-// ////////////////////////////////////////////////////////////
-// Vector2f Transform::transformPoint(float x, float y) const
-// {
-//     return Vector2f(matrix[0] * x + matrix[4] * y + matrix[12],
-//                     matrix[1] * x + matrix[5] * y + matrix[13]);
-// }
 
 SquareScene::SquareScene() : id2transforms(N_UNIQUE_GRAPHICAL_ENTITES), id2squares(N_UNIQUE_GRAPHICAL_ENTITES), id2instanceVBO(N_UNIQUE_GRAPHICAL_ENTITES, -1),
                              id2graphical_entities(N_UNIQUE_GRAPHICAL_ENTITES), id2n_instances(N_UNIQUE_GRAPHICAL_ENTITES, 0), id_instance2graph(N_UNIQUE_GRAPHICAL_ENTITES)
@@ -448,7 +414,6 @@ MapGridLayer::MapGridLayer()
         glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataTiles), transforms.data(), GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        //! create attribute pointers based on id maybe?
         glEnableVertexAttribArray(3);
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
         glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
@@ -561,89 +526,64 @@ void BuildingLayer::removeBuilding(Building &b)
     destroyInstanceOf(b.graphics_id, b.instance_id);
 }
 
-UnitLayer::UnitLayer()
+
+
+UnitLayer::UnitLayer() : prototype({0, 0}, {1, 1}, {255, 0, 0})
 {
+    
 
-    id2shader[1] = {s_vertexShaderSource_instanced, s_framgentShaderSourceStorm, "storm"};
+    id2shader[0] = {s_vertexShaderSource_unit, s_framgentShaderSource, "unit"};
 
-    movers[0] = std::make_unique<CircleMover>();
-    auto &circle = static_cast<CircleMover &>(*movers[0]);
-    movers[1] = std::make_unique<LineMover>();
+    glGenBuffers(1, &instanceVBO);
+    glBindVertexArray(prototype.quadVAO2);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit) * 7, transforms.data(), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    for (int i = 0; i < N_MAX_GRAPHS; ++i)
-    {
-        free_graph_inds.insert(i);
-    }
+    //! create attribute pointers based on id maybe?
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)(1 * sizeof(float)));
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(6);
+    glVertexAttribPointer(6, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)(4 * sizeof(float)));
+    glEnableVertexAttribArray(7);
+    glVertexAttribPointer(7, 4, GL_UNSIGNED_BYTE, GL_FALSE, 7 * sizeof(float), (void *)(6 * sizeof(float)));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    id2squares[2] = Square({0, 0}, {1, 1}, {0, 255, 0, 255});
-    id2squares[1] = Square({0, 0}, {3, 2}, {0, 0, 255, 150});
-    id2squares[0] = Square({0, 0}, {1, 1}, {255, 0, 0});
-
-    for (int g_id = 0; g_id < N_UNIQUE_GRAPHICAL_ENTITES; ++g_id)
-    {
-        auto &instanceVBO = id2instanceVBO.at(g_id);
-        auto &transforms = id2transforms.at(g_id);
-        auto &prototype = id2squares.at(g_id);
-
-        glGenBuffers(1, &instanceVBO);
-        glBindVertexArray(prototype.quadVAO2);
-        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedData) * 5, transforms.data(), GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        //! create attribute pointers based on id maybe?
-        glEnableVertexAttribArray(3);
-        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(1 * sizeof(float)));
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glVertexAttribDivisor(3, 1);
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glBindVertexArray(0);
-    }
+    glVertexAttribDivisor(3, 1);
+    glVertexAttribDivisor(4, 1);
+    glVertexAttribDivisor(5, 1);
+    glVertexAttribDivisor(6, 1);
+    glVertexAttribDivisor(7, 1);
+    glBindVertexArray(0);
+    
 }
 
 void UnitLayer::draw(GLint target, View &view)
 {
     view.calcMatrix();
-    for (int g_id = 0; g_id < N_UNIQUE_GRAPHICAL_ENTITES; ++g_id)
+
+    if (n_instances == 0){ return; }
+  
+    id2shader.at(0).use();
+    id2shader.at(0).setMat4("view", view.matrix);
+    
+
+    glBindVertexArray(prototype.quadVAO2);
+    if (prototype.texture)
     {
-        auto &transforms = id2transforms.at(g_id);
-
-        auto wtf = transforms.data();
-        if (id2n_instances.at(g_id) == 0)
-        {
-            continue;
-        }
-        auto &prototype = id2squares.at(g_id);
-
-        if (!id2shader.contains(g_id))
-        {
-            shader_instanced.use();
-            shader_instanced.setMat4("view", view.matrix);
-        }
-        else
-        {
-            id2shader.at(g_id).use();
-            id2shader.at(g_id).setMat4("view", view.matrix);
-        }
-
-        glBindVertexArray(prototype.quadVAO2);
-        if (prototype.texture)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, prototype.texture);
-        }
-
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 6, id2n_instances.at(g_id));
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindVertexArray(0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, prototype.texture);
     }
+
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 6, n_instances);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindVertexArray(0);
+    
 }
 
 void createFramebuffer(GLuint &fbo, GLuint &fbtex)
@@ -793,59 +733,6 @@ void VisionLayer::draw2(sf::RenderWindow &window)
 
     drawFOW(window, fow_vertices);
 
-    // fow_shader.use();
-    // fow_shader.setMat4("view", window.view.matrix);
-    // fow_shader.setMat4("transform", glm::mat4(1));
-
-    // glBindVertexArray(revealed_fow_vertices.quadVAO);
-
-    // glBindFramebuffer(GL_FRAMEBUFFER, fbo[0]);
-    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // glViewport(0.0, 0.0, 198, 102);
-
-    // glDrawArrays(GL_TRIANGLES, 0, revealed_fow_vertices.getVertexCount());
-
-    // glBindVertexArray(tex_square.quadVAO2);
-    // glBindBuffer(GL_ARRAY_BUFFER, tex_square.quadVBO2);
-    // glBufferData(GL_ARRAY_BUFFER, 5 * sizeof(float) * tex_square.vertices.size(), tex_square.vertices.data(), GL_STATIC_DRAW);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // const auto n_passes = 5;
-    // for (int pass_ind = 0; pass_ind < n_passes; ++pass_ind)
-    // {
-    //     glBindFramebuffer(GL_FRAMEBUFFER, fbo[(pass_ind + 1) % 2]);
-    //     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //     gauss_horiz.use();
-    //     gauss_horiz.setMat4("view", glm::mat4(1));
-    //     gauss_horiz.setMat4("transform", glm::mat4(1));
-
-    //     glBindTexture(GL_TEXTURE_2D, tex[pass_ind % 2]);
-    //     glDrawArrays(GL_TRIANGLE_FAN, 0, 6);
-
-    //     glBindFramebuffer(GL_FRAMEBUFFER, fbo[(pass_ind % 2)]);
-    //     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //     gauss_vert.use();
-    //     gauss_vert.setMat4("view", glm::mat4(1));
-    //     gauss_vert.setMat4("transform", glm::mat4(1));
-
-    //     glBindTexture(GL_TEXTURE_2D, tex[(pass_ind + 1) % 2]);
-    //     glDrawArrays(GL_TRIANGLE_FAN, 0, 6);
-    // }
-
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // glViewport(0.0, 0.0, 1980, 1020);
-
-    // downsample.use();
-    // downsample.setMat4("view", glm::mat4(1));
-    // downsample.setMat4("transform", glm::mat4(1));
-
-    // glBindTexture(GL_TEXTURE_2D, tex[(n_passes + 1) % 2]);
-    // glDrawArrays(GL_TRIANGLE_FAN, 0, 6);
-
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // glBindVertexArray(0);
 }
 
 void VisionLayer::setup()

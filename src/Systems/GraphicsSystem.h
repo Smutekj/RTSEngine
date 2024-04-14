@@ -114,7 +114,7 @@ struct GraphicsSystem : System2
     // std::unordered_map<int, std::unique_ptr<PointSpawner>> point_spawners_;
     
 public:
-    SquareScene* p_graphics_layer;
+    UnitLayer* p_graphics_layer;
 
     GraphicsSystem(ComponentID id);
     virtual ~GraphicsSystem() = default;
