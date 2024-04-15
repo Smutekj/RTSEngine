@@ -52,6 +52,7 @@ void Game::removeUnit(BoidInd u_ind)
 
 void Game::removeUnit(Entity e)
 {
+    assert(selection_.selected_agents.noDuplicates());
     selection_.selected_agents.removeEnt(e.ind);
     auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
     auto &g_comp = gs.getComponent<ComponentID::GRAPHICS, GraphicsComponent>(e);

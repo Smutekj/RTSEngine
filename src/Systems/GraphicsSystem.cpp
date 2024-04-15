@@ -12,6 +12,7 @@ void makeUnitFromComponents(UnitLayer& scene, GraphicsComponent& comp){
     transforms[instance_id].trans = comp.transform.r;
     transforms[instance_id].angle = comp.transform.angle;  
     transforms[instance_id].scale = comp.radius;  
+    comp.instance_ind = instance_id;
     scene.n_instances++;
 }
 

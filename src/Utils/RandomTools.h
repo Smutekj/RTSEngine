@@ -72,7 +72,7 @@ inline  void generateRandomPositionsInCircles(const float density,
         int player_ind =0;
         const float dx = std::sqrt(1.f/density); 
         while(n_in_circle > 0 and r.y < r0.y + range_x){
-            n_positions > n_to_insert/2 ? player_ind = 0 : player_ind = 0;
+            n_positions > n_to_insert/3 ? player_ind = 0 : player_ind = 1                                                                                                                                                                                   ;
             if(dist2(r, circle.r) < circle.radius_sq){
                 game.addUnit(player_ind, r, 0);
                 n_positions--;

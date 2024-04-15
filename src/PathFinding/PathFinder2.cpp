@@ -469,6 +469,7 @@ void PathFinder2::doPathFinding(const std::vector<sf::Vector2f> r_coords, const 
         for (int i = 0; i < agent_indices.size(); ++i)
         {
             const auto comp_ind = entity2compvec_ind.at(agent_indices[i]);
+            if(comp_ind == -1){continue;}
             setPathOfAgent(comps.at(comp_ind), r_end, path_and_portals);
         }
     }

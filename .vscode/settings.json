@@ -71,6 +71,7 @@
         "any": "cpp",
         "cstring": "cpp",
         "variant": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "*.def": "cpp"
     }
 }

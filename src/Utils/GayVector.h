@@ -4,7 +4,7 @@
 #include "../core.h"
 #include <array>
 #include <vector>
-
+#include <unordered_set>
 
 
 template <typename Type, int MAX_ENTITIES>
@@ -94,10 +94,37 @@ struct GayVectorI{
             return data.size();
         }
         void clear(){
-            data.clear();
             for(auto entity_ind : data){
                 entity2ind_in_vec.at(entity_ind) = -1;
             }
+            data.clear();
+        }
+
+        bool containsEnt(int entity_ind){
+            return entity2ind_in_vec.at(entity_ind)!=-1;
+        }
+
+        bool noDuplicates()const{
+            std::unordered_set<int> set;
+            for(auto d : data){
+                if(set.count(d)==1){
+                    return false;
+                }
+                set.insert(d);
+            }
+            set.clear();
+            for(auto d : entity2ind_in_vec){
+                if(d!=-1){
+                    if( set.count(d)==1 ){
+                        return false;
+                    }
+                    if(d >= data.size()){
+                        return false;
+                    }
+                    set.insert(d);
+                }
+            }
+            return true;
         }
 
 };
