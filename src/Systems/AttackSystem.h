@@ -62,8 +62,8 @@ private:
             }
         }
         else{
-            if(entity2compvec_ind_.at(comp.target_entity_ind) == -1)
-            {return;}
+            if(entity2compvec_ind_.at(comp.target_entity_ind) == -1) {return;}
+            
             const auto& target_comp = comps.at(entity2compvec_ind_.at(comp.target_entity_ind));
             const float distance = dist(comp.transform.r, target_comp .transform.r);
             if(distance > comp.weapon.range && closest_enemy_comp_ind != -1 && n_enemy_neighbours != 0){

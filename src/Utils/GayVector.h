@@ -104,7 +104,7 @@ struct GayVectorI{
             return entity2ind_in_vec.at(entity_ind)!=-1;
         }
 
-        bool noDuplicates()const{
+        bool noDuplicates() const{
             std::unordered_set<int> set;
             for(auto d : data){
                 if(set.count(d)==1){

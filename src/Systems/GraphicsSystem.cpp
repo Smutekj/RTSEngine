@@ -52,23 +52,24 @@ void GraphicsSystem::update()
     auto &components = static_cast<CompArray &>(*p_comps_).components_;
     auto& transforms = p_graphics_layer->transforms;
 
+    int comp_ind = 0;
     for (auto &comp : components)
     {   
-        transforms.at(comp.instance_ind).trans = comp.transform.r;
-        transforms.at(comp.instance_ind).angle = comp.transform.angle; 
-        transforms.at(comp.instance_ind).scale = comp.radius; 
+        transforms.at(comp_ind).trans = comp.transform.r;
+        transforms.at(comp_ind).angle = comp.transform.angle; 
+        transforms.at(comp_ind).scale = comp.radius; 
         
         sf::Color c = sf::Color::Red;
         if(comp.player_ind == 1){
             c = sf::Color::Blue;
         }
-        transforms.at(comp.instance_ind).color = c; 
+        transforms.at(comp_ind).color = c; 
         
         //! why the fuck is this here? :D :D 
         comp.transform.r += comp.transform.vel * dt;
         comp.transform.angle += comp.transform.angle_vel * dt;
     
-
+        comp_ind++;
     }
     // p_graphics_layer->update();
 

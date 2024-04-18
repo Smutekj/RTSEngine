@@ -1,7 +1,7 @@
 #pragma once
 #include <gtest/gtest.h>
-#include "../Grid.h"
-#include "../Triangulation.h"
+#include "../Utils/Grid.h"
+#include "../PathFinding/Triangulation.h"
 #include "../PathFinding/ReducedTriangulationGraph.h"
 #include "../PathFinding/PathFinder2.h"
 

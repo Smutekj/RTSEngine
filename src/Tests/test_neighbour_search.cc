@@ -1,8 +1,8 @@
 #pragma once
 #include <gtest/gtest.h>
-#include "../Grid.h"
-#include "../NeighbourSearcherContext.h"
-#include "../NeighbourSearcherStrategy.h"
+#include "../Utils/Grid.h"
+#include "../Utils/NeighbourSearcherContext.h"
+#include "../Utils/NeighbourSearcherStrategy.h"
 
 
 TEST(TestSmallestDistance, BasicAssertions) {

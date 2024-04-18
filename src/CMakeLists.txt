@@ -65,34 +65,33 @@ set(utils_hdrs DebugInfo.h  Grid.cpp GayVector.cpp NeighbourSearcherStrategy.cpp
 list(TRANSFORM utils_objs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/Utils/ )
 list(TRANSFORM utils_hdrs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/Utils/ )
 
-add_executable(Boids main.cpp glad.c   MouseKeyboard.cpp  MouseKeyboard.hpp ${utils_hdrs} ${utils_objs}
+add_executable(Boids main.cpp glad.c MouseKeyboard.cpp MouseKeyboard.hpp ${utils_hdrs} ${utils_objs}
  ${objs} ${game_objs}   ${systems_objs} ${pathfinding_objs} ${gui_objs}
                               ${hdrs} ${game_hdrs}  ${systems_hdrs} ${pathfinding_hdrs}
                                ${gui_hdrs} ${graphics_hdrs} ${graphics_objs}
                 )
 
 
-# set(libraries sfml-graphics OpenMP::OpenMP_CXX
-##### THIS IS FOR GOOGLE TEST
-# enable_testing()
+#### THIS IS FOR GOOGLE TEST
+enable_testing()
 
-# add_executable(
-#         test_all
-#         Tests/main.cpp
-#         ${objs} ${game_objs}  ${graphics_objs}  ${systems_objs} ${pathfinding_objs}
-#                               ${hdrs} ${game_hdrs} ${graphics_hdrs}  ${systems_hdrs} ${pathfinding_hdrs}
-#                           )
-
+add_executable(
+        test_all
+        Tests/main.cpp
+        glad.c MouseKeyboard.cpp MouseKeyboard.hpp ${utils_hdrs} ${utils_objs}
+        ${objs} ${game_objs}   ${systems_objs} ${pathfinding_objs} ${gui_objs}
+                              ${hdrs} ${game_hdrs}  ${systems_hdrs} ${pathfinding_hdrs}
+                               ${gui_hdrs} ${graphics_hdrs} ${graphics_objs}
+                )
 include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} lib ../imgui ../imgui/backends)
 
 if(OpenMP_CXX_FOUND)
 target_link_libraries(Boids PRIVATE  ${GLEW_LIBRARIES} glfw OpenMP::OpenMP_CXX ${FREETYPE_LIBRARIES})
-# target_link_libraries(test_all PRIVATE  ${GLEW_LIBRARIES} glfw OpenMP::OpenMP_CXX GTest::gtest_main)
+target_link_libraries(test_all PRIVATE  ${GLEW_LIBRARIES} glfw OpenMP::OpenMP_CXX ${FREETYPE_LIBRARIES} 
+                        GTest::gtest_main)
 endif()
 
 
-# include(GoogleTest)
-# gtest_discover_tests(test_all)
+include(GoogleTest)
+gtest_discover_tests(test_all)
 
-
-#     target_link_libraries(Boids PRIVATE sfml-graphics)

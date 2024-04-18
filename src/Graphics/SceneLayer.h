@@ -494,8 +494,6 @@ struct UnitLayer{
         COUNT
     };
 
-
-    // GayVector<InstancedDataUnit, N_MAX_INSTANCES> transforms;
     std::array<InstancedDataUnit, N_MAX_INSTANCES> transforms;
     GLuint instanceVBO; 
     int n_instances = 0;
@@ -526,7 +524,7 @@ struct UnitLayer{
     void removeInstance(int instance_ind){
 
         n_instances--;
-        transforms.at(instance_ind) = transforms.at(n_instances);
+        // transforms.at(instance_ind) = transforms.at(n_instances);
 
     }
 

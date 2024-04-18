@@ -538,6 +538,6 @@ void Game::draw(sf::RenderWindow &window)
     p_map_grid->draw(window);
     // map_layer.draw(window);
 
-    // vision_layer.setup();
-    // vision_layer.draw2(window);
+    vision_layer.setup();
+    vision_layer.draw2(window);
 }
