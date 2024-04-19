@@ -36,26 +36,6 @@ void initializeEventCallbacks(sf::RenderWindow& window){
                 event.key.scancode = scancode;
                 w->events.push_back(event);
             }
-            // if (glfwGetKey(window, GLFW_KEY_LEFT))
-            // {
-            //     view_l->move({0.5f, 0.f});
-            // }
-            // else if (glfwGetKey(window, GLFW_KEY_RIGHT))
-            // {
-            //     view_l->move({-0.5f, 0.f});
-            // }
-            // else if (glfwGetKey(window, GLFW_KEY_DOWN))
-            // {
-            //     view_l->move({0.f, 1.0f});
-            // }
-            // else if (glfwGetKey(window, GLFW_KEY_UP))
-            // {
-            //     view_l->move({0.f, -1.0f});
-            // }
-            // else if (glfwGetKey(window, GLFW_KEY_DELETE)){
-            //     // scene.destroyInstanceOf(0, 0);
-            // }   
- 
         };
         glfwSetKeyCallback(window.handle, func);
 
@@ -90,29 +70,36 @@ void initializeEventCallbacks(sf::RenderWindow& window){
             event.type = sf::Event::EventType::MouseWheelMoved;
             event.mouseWheelScroll.x = xoffset;
             event.mouseWheelScroll.y = yoffset;
-            event.mouseWheelScroll.delta = yoffset;
+            event.mouseWheelScroll.delta = yoffset; //! wtf?
             w->events.push_back(event);
         };
         glfwSetScrollCallback(window.handle, func_scroll);
-        
 
+        auto window_size_callback = [](GLFWwindow* window,  int width, int height){
+            auto w = static_cast<sf::RenderWindow*>(glfwGetWindowUserPointer(window));
+            w->size = {width, height};
+            glViewport(0,0,width, height);
+        };
+
+
+        glfwSetWindowSizeCallback(window.handle, window_size_callback);
 }
 
 namespace sf{
 
-    RenderWindow::RenderWindow(sf::Vector2i size) : events(0){
+    RenderWindow::RenderWindow(sf::Vector2i size) : events(0), Window(size) {
         
-        this->size = size;
-        view.calcMatrix();
 
+        view.calcMatrix();
 
         glfwInit();
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    
-        handle = glfwCreateWindow(size.x, size.y, "LearnOpenGL", glfwGetPrimaryMonitor(), NULL); //NULL, NULL); //
+
+        handle = glfwCreateWindow(size.x, size.y, "LearnOpenGL",  NULL, NULL); // glfwGetPrimaryMonitor(), NULL); // 
+        glfwGetFramebufferSize(handle, &size.x, &size.y);
 
         if (handle == NULL)
         {
@@ -150,9 +137,9 @@ namespace sf{
         // First, convert from viewport coordinates to homogeneous coordinates
         Vector2f normalized;
         sf::IntRect viewport = getViewport(view);
-        viewport.height = 1080;
-        viewport.width = 1920;
-        const auto alpha = 1080.f/1920.f;
+        viewport.height = size.y;
+        viewport.width  = size.x;
+        const auto alpha = size.x/(float)size.y;
 
         normalized.x = -1.0f + 2.0f*(point.x - viewport.left) / viewport.width;
         normalized.y =  1.0f - 2.0f*(point.y - viewport.top)  / viewport.height;
@@ -162,6 +149,11 @@ namespace sf{
         auto inv_view = glm::inverse(view.matrix);
         glm::vec4 result2 = inv_view * glm::vec4(result.x, result.y, 0.f, 1.f);
 
+        Vector2f penis;
+        float window2viewx = (view.width)/(size.x);
+        float window2viewy = (view.height)/(size.y);
+        penis.x = window2viewx*(point.x) + view.r_center.x - view.width/2.f;
+        penis.y = window2viewy*(point.y) + view.r_center.y - view.height/2.f;
         // result.x *= view.width /2.0f;
         // result.y *= view.height/2.0f;
         // result.x += view.r_center.x;
@@ -177,7 +169,7 @@ namespace sf{
     {
         float width  = static_cast<float>(size.x);
         float height = static_cast<float>(size.y);
-        const FloatRect& viewport = {0.0, 0.0, 1.0,1.0}; //view.getViewport();
+        const FloatRect& viewport = {0.0, 0.0, 1.0, 1.0}; //view.getViewport();
 
         return IntRect(static_cast<int>(width  * viewport.left),
                     static_cast<int>(height * viewport.top),

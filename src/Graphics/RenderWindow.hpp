@@ -15,6 +15,7 @@ namespace sf{
 
 
 struct Window{
+    Window(sf::Vector2i size) : size(size){}
     sf::Vector2i size;
     GLFWwindow* handle;
 };

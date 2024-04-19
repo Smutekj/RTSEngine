@@ -27,18 +27,6 @@ constexpr float FRAME_RATE = 60;
 #include "imgui_impl_opengl3.h"
 
 
-struct ViewMover{
-    View* view;
-    ViewMover(sf::RenderWindow& window) : view(&window.view){
-        // makeStuff(window);
-    }
-
-    void zoom(float scale){
-        view->zoom(scale);
-    }
-};
-
-
 
 
 int main() {
@@ -58,8 +46,6 @@ int main() {
     sf::Vector2f box_size = {static_cast<float>(BOX[0]), static_cast<float>(BOX[1])};
     sf::Vector2i n_cells = {N_CELLS[0], N_CELLS[1]};
     sf::Vector2f cell_size = {static_cast<float>(BOX[0] / n_cells.x), static_cast<float>(BOX[1] / n_cells.y)};
-
-    ViewMover mover(window);
 
     // auto view = window.getView();
     // view.setViewport({0.1f, 0.0f, 0.9f, 1.0f});
@@ -104,7 +90,8 @@ int main() {
     tri.setPosition(Geometry::BOX[0]/2, Geometry::BOX[1]/2);
 
     double last_update_time = 0;
-    glViewport(0.0, 0.0, RES_X, RES_Y);
+
+    glViewport(0.0, 0.0, window.size.x, window.size.y);
     while(!glfwWindowShouldClose(window.handle)){
         
         double now = glfwGetTime();
