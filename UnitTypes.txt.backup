@@ -1,6 +1,6 @@
 [UnitType]
 name default
-MAX_VEL  5
+MAX_VEL  10
 RADIUS 3
 ROTATION_VEL 10
 MASS 1

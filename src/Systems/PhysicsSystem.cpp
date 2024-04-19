@@ -50,6 +50,11 @@ void PhysicsSystem::update() {
             const auto state_i = phys_comp.state;
             const auto player_ind = phys_comp.player_ind;
 
+            const auto scatter_multiplier = force_multipliers[Multiplier::SCATTER];
+            const auto repulse_multiplier = force_multipliers[Multiplier::REPULSE];
+            const auto push_multiplier = force_multipliers[Multiplier::PUSH];
+            const auto align_multiplier = force_multipliers[Multiplier::ALIGN];
+
             sf::Vector2f repulsion_force(0,0);
             sf::Vector2f push_force(0,0);
             sf::Vector2f scatter_force(0,0);
@@ -64,7 +69,7 @@ void PhysicsSystem::update() {
                 const auto d_surfs = norm2(dr);
                 const auto x = r_collision_sq / (d_surfs);
                 const auto state_j = n_data.state;
-                const auto alpha = 0.5f; // radii_[ind_i] / pair.r_collision;
+                // const auto alpha = radii_[ind_i] / pair.r_collision;
                 // const bool is_same_group = commander_groups_.isSameGroup(ind_i, boid_ind_j);
                 const bool is_same_player =  player_ind != n_data.player_ind;
                 if(x > 0.8f)  [[unlikely]] 
@@ -82,7 +87,7 @@ void PhysicsSystem::update() {
                  bool moving_pushes_standing_a = state_j == MoveState::MOVING and state_i == MoveState::STANDING;
                 if (moving_pushes_standing_a and x > 0.75f) [[unlikely]] 
                 {
-                    push_force += -dr * x * mass_i/(mass_i+mass_j) ;
+                    push_force += -dr * x * mass_j/(mass_i+mass_j) ;
                 }
 
                 if (state_j == MoveState::MOVING and x > r_collision_sq / (RSCATTER * RSCATTER))
@@ -95,10 +100,13 @@ void PhysicsSystem::update() {
              dr_nearest_neighbours /= n_neighbours;
 
             if (n_neighbours > 1) {
-                scatter_force = 5.f*dr_nearest_neighbours / norm(dr_nearest_neighbours) * phys_comp.max_speed;
+                scatter_force = dr_nearest_neighbours / norm(dr_nearest_neighbours) * phys_comp.max_speed;
             }
 
-            phys_comp.inertia_vel += (repulsion_force + push_force + scatter_force);
+        
+            phys_comp.inertia_vel += (repulse_multiplier*repulsion_force +
+                                      push_multiplier*push_force +
+                                      scatter_multiplier*scatter_force);
 
     }
     void PhysicsSystem::communicate(std::array<SharedData, N_MAX_ENTITIES>& entity2shared_data)const{

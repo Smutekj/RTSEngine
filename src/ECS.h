@@ -35,11 +35,12 @@ constexpr int N_MAX_ENTITIES = 10000;
 
 // struct Observer
 
-//! \struct maintains a table for entity -> component mappings; 
+//! \struct Manages pointers held by components. 
 struct BookKeeper
 {
 
-    std::array<int, N_MAX_ENTITIES> entity2compvec_ind_;
+
+
 
 };
 
@@ -404,6 +405,8 @@ public:
         comp_id2name_[new_comp_id] = name;
         n_unique_components++;
     }
+
+    
 
     void removeEntity(Entity ent)
     {

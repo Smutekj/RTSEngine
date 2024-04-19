@@ -39,10 +39,11 @@
         vsc.player_ind = player_ind;
         vsc.vision_radius_sq = unit_data.r_vision*unit_data.r_vision;
 
+        auto alpha = 2*(rand()/(float)RAND_MAX) + 0.1;
         PhysicsComponent pc;
         pc.transform = tc;
-        pc.mass = unit_data.mass;
-        pc.radius = unit_data.radius;
+        pc.mass = unit_data.mass * alpha*alpha*alpha;
+        pc.radius = unit_data.radius * alpha;
         pc.player_ind = player_ind;
 
         AttackComponent ac;
@@ -50,7 +51,6 @@
         ac.state = MoveState::STANDING;
         ac.weapon = Weapon();
         ac.player_ind = player_ind;
-
 
         auto new_ent_ind = p_ecs_->free_entity_inds_.top();
         
@@ -64,12 +64,14 @@
         gc.transform = tc;
         gc.player_ind = player_ind;
         gc.p_shared_data = &p_ecs_->entity2shared_data.at(new_ent_ind).health;
+        gc.radius = pc.radius;
 
         p_ecs_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS).onComponentCreation(gc);
 
         // pc.v_max = unit_data.max_vel;
         p_ecs_->entity2shared_data.at(new_ent_ind) = {tc, MoveState::STANDING};
-        p_ecs_->entity2shared_data.at(new_ent_ind).health.p_shared_data_ = &p_ecs_->entity2shared_data.at(new_ent_ind).transform;
+        p_ecs_->entity2shared_data.at(new_ent_ind).health.p_shared_data_ =
+         &p_ecs_->entity2shared_data.at(new_ent_ind).transform;
 
         p_ecs_->initializeEntity(ac, tc, pc, vsc, pfc, hc, gc);
     }

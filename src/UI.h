@@ -7,6 +7,7 @@
 #include <array>
 
 #include "Utils/Vector.hpp"
+#include "Systems/PhysicsSystem.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -56,7 +57,10 @@ public:
     } 
 };
 
-class PhysicsSystem;
+// struct PhysicsSystem;
+// struct PhysicsSystem : System{
+//     enum class Multiplier;
+// };
 class SeekSystem;
 
 class PhysicsWindow : public UIWindow
@@ -69,6 +73,9 @@ class PhysicsWindow : public UIWindow
         GRAVITY = 0,
         MAX_SPEED,
     };
+
+    std::unordered_map<PhysicsSystem::Multiplier, float>& force_multipliers;
+    std::unordered_map<PhysicsSystem::Multiplier, std::pair<float, float>> mulitplier2slider_min_max;
 
 public:
     PhysicsWindow(PhysicsSystem &ps);
@@ -157,6 +164,7 @@ public:
     virtual void draw() override;
 };
 
+
 class UnitInitializer;
 class UnitMakerWindow : public UIWindow
 {
@@ -191,7 +199,7 @@ struct UnitData{
 
     std::vector<UnitData> type_ind2unit_data;
 
-    const std::string unit_types_file_name = "/home/smutekj/projects/RTSEngineWithOpenGL/UnitTypes.txt"; 
+    const std::string unit_types_file_name = "/home/smutekj/projects/RTSEngineWithOpenGL2/UnitTypes.txt"; 
 
     int selected_unit_ind = 0;
     std::string new_unit_name = "new unit";

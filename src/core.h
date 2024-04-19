@@ -41,8 +41,6 @@
 typedef uint32_t u_int_32_t;
 typedef uint16_t u_int_16_t;
 
-
-
 #pragma once
 
 constexpr int N_MAX_NAVIGABLE_BOIDS = 5000;
@@ -60,10 +58,7 @@ typedef uint32_t TriInd;
 typedef uint32_t VertInd;
 typedef int BoidInd;
 
-constexpr int MAX_UNITS_PER_PLAYER = 200;
 constexpr int N_PLAYERS = 2;
-
-constexpr int NUM_OMP_THREADS_FOW = 4;
 constexpr int N_MAX_THREADS = 12; //! how to find this at compile time?
 
 struct EdgeVInd {
@@ -96,7 +91,7 @@ enum Direction : int {
 inline Orientation direction2Orientation(Direction dir) { return Orientation(dir % 4); }
 
 constexpr float RAVOID = 10;
-constexpr float RSCATTER = 2;
+constexpr float RSCATTER = 50;
 constexpr float RHARD = 3;
 constexpr float RFLOCK = 50;
 constexpr float RALLIGN = 50;

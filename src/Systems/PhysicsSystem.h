@@ -18,6 +18,17 @@ struct PhysicsSystem : System2{
 
     typedef ComponentArray<PhysicsComponent> CompArray;
 
+    enum class Multiplier{
+        PUSH,
+        REPULSE,
+        SCATTER,
+        ALIGN,
+        SEEK,
+        DECAY
+    };
+
+    std::unordered_map<Multiplier, float> force_multipliers;
+
     std::vector<sf::Vector2f> component2cumulative_force_;
     std::unique_ptr<NeighbourSearcherContext<PhysicsComponent, InteractionData>> p_ns_;
     Edges* p_map_;

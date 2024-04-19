@@ -24,7 +24,7 @@ struct Weapon
     float time_since_shooting = 60;
     float reload_time = 60;
     float damage = 1;
-    float range = 50;
+    float range = 10;
     int proj_factory_ind = -1;
 
     Weapon(float damage, float range, float reload_time, int proj_factory_ind)

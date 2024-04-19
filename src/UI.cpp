@@ -18,8 +18,6 @@
 #include "Utils/magic_enum.hpp"
 #include "Utils/magic_enum_utility.hpp"
 
-
-
 std::vector<std::string> separateLine(std::string line, char delimiter = ' ')
 {
     std::vector<std::string> result;
@@ -33,7 +31,6 @@ std::vector<std::string> separateLine(std::string line, char delimiter = ' ')
     }
     return result;
 }
-
 
 UIWindow::UIWindow(std::string name) : name(name)
 {
@@ -120,9 +117,21 @@ void UI::draw(sf::RenderWindow &window)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-PhysicsWindow::PhysicsWindow(PhysicsSystem &ps) : UIWindow("Physics")
+PhysicsWindow::PhysicsWindow(PhysicsSystem &ps) : force_multipliers(ps.force_multipliers), UIWindow("Physics")
 {
     controled_data.at(Data::MAX_SPEED) = &ps.max_speed;
+    force_multipliers[PhysicsSystem::Multiplier::ALIGN] = 1.0f;
+    force_multipliers[PhysicsSystem::Multiplier::SEEK] = 1.0f;
+    force_multipliers[PhysicsSystem::Multiplier::SCATTER] = 0.01f;
+    force_multipliers[PhysicsSystem::Multiplier::DECAY] = 1.0f;
+    force_multipliers[PhysicsSystem::Multiplier::SEEK] = 1.0f;
+    force_multipliers[PhysicsSystem::Multiplier::REPULSE] = 0.01f;
+    force_multipliers[PhysicsSystem::Multiplier::PUSH] = 0.01f;
+
+    for (auto &[multiplier_type, value] : force_multipliers)
+    {
+        mulitplier2slider_min_max[multiplier_type] = {0.01f, 2.f};
+    }
 }
 
 PhysicsWindow::~PhysicsWindow() {}
@@ -130,15 +139,27 @@ PhysicsWindow::~PhysicsWindow() {}
 void PhysicsWindow::draw()
 {
 
-    ImGui::Begin(name.c_str());               // Create a window called "Hello, world!" and append into it.
-    ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+    ImGui::Begin(name.c_str());
 
-    // ImGui::SliderFloat("float", gravity, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+    // if (ImGui::BeginListBox("Force Multipliers"))
+    {
+        for (auto &[multiplier_type, value] : force_multipliers)
+        {
+            auto multiplier_name = static_cast<std::string>(magic_enum::enum_name(multiplier_type));
+            auto &min_value = mulitplier2slider_min_max[multiplier_type].first;
+            auto &max_value = mulitplier2slider_min_max[multiplier_type].second;
 
-    ImGui::SliderFloat("float", (float *)controled_data.at(Data::MAX_SPEED), 0.0f, 50.0f); // Edit 1 float using a slider from 0.0f to 1.0f
-    // ImGui::ColorEdit3("clear color", (float*)&); // Edit 3 floats representing a color
+            ImGui::PushItemWidth(ImGui::GetWindowWidth()*0.66);
+            ImGui::SliderFloat(multiplier_name.c_str(), &value, min_value, max_value);
+            
+            ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.33f);
+            ImGui::InputFloat(("min##" + multiplier_name).c_str(), &min_value);
+            ImGui::SameLine();
+            ImGui::InputFloat(("max##" + multiplier_name).c_str(), &max_value);
 
-    // if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+        }
+        // ImGui::EndListBox();
+    }
 
     ImGui::End();
 }
@@ -189,34 +210,37 @@ UnitMakerWindow::UnitMakerWindow(UnitInitializer &unit_init) : p_unit_maker(&uni
 
     readUnitTypesFile();
 
+    for (auto [unit_type_name, type_ind] : type_name2type_ind)
+    {
 
-    for(auto [unit_type_name, type_ind] : type_name2type_ind){
-        
-        const auto& values = type_ind2data_values.at(type_ind);
+        const auto &values = type_ind2data_values.at(type_ind);
         new_unit_data.radius = values.at(Data2::RADIUS);
-        new_unit_data.mass   = values.at(Data2::MASS);
+        new_unit_data.mass = values.at(Data2::MASS);
         new_unit_data.max_vel = values.at(Data2::MAX_VEL);
         new_unit_data.rot_vel = values.at(Data2::ROTATION_VEL);
         new_unit_data.r_vision = values.at(Data2::VISION_RADIUS);
         new_unit_data.max_range = values.at(Data2::WEAPON_RANGE);
         p_unit_maker->registerUnitType(new_unit_data.radius, new_unit_data.mass, new_unit_data.weapon_type_ind,
-                                                new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
-                                                30.f, new_unit_name);
+                                       new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
+                                       30.f, new_unit_name);
     }
-    
-    
 }
 
-void UnitMakerWindow::readUnitTypesFile(){
+void UnitMakerWindow::readUnitTypesFile()
+{
 
     const auto filename = unit_types_file_name;
     std::ifstream file(filename);
 
     std::string line;
-    
+
     int data_type_ind = 0;
-    while(    std::getline(file, line)){ //! iterate over [UnitType] blocks
-        if(line != "[UnitType]"){throw std::runtime_error("congrats, you fucked up file format yet again, lol");}
+    while (std::getline(file, line))
+    { //! iterate over [UnitType] blocks
+        if (line != "[UnitType]")
+        {
+            throw std::runtime_error("congrats, you fucked up file format yet again, lol");
+        }
         std::getline(file, line);
         auto words_on_line = separateLine(line);
 
@@ -224,14 +248,17 @@ void UnitMakerWindow::readUnitTypesFile(){
         type_ind2data_inds.resize(data_type_ind + 1);
         type_ind2name.resize(data_type_ind + 1);
 
-        auto& data_values = type_ind2data_values.at(data_type_ind);
+        auto &data_values = type_ind2data_values.at(data_type_ind);
         std::string unit_type_name = words_on_line.at(1);
         type_ind2name.at(data_type_ind) = unit_type_name;
         type_name2type_ind[unit_type_name] = data_type_ind;
 
         while (std::getline(file, line))
         {
-            if(line == "END"){break;}
+            if (line == "END")
+            {
+                break;
+            }
             auto words_on_line = separateLine(line);
             assert(words_on_line.size() == 2);
 
@@ -246,13 +273,15 @@ void UnitMakerWindow::readUnitTypesFile(){
     file.close();
 }
 
-void UnitMakerWindow::appendToUnitTypesFile(){
+void UnitMakerWindow::appendToUnitTypesFile()
+{
     std::ofstream file;
     file.open(unit_types_file_name, std::ios_base::app); // append instead of overwrite
     file << "[UnitType]\n";
     file << "name " + new_unit_name + "\n";
 
-    for(int data_ind = 0; data_ind < unit_data_count; data_ind++){
+    for (int data_ind = 0; data_ind < unit_data_count; data_ind++)
+    {
 
         const auto data_type = magic_enum::enum_value<Data2>(data_ind);
         const auto data_name = std::string(magic_enum::enum_name(data_type));
@@ -263,7 +292,8 @@ void UnitMakerWindow::appendToUnitTypesFile(){
     file.close();
 }
 
-void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerWindow::Data2 datum_type, float datum_value){
+void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerWindow::Data2 datum_type, float datum_value)
+{
 
     const auto filename = unit_types_file_name;
     const auto tmp_filename = filename + ".tmp";
@@ -276,7 +306,10 @@ void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerW
     const auto datum_name = std::string(magic_enum::enum_name(datum_type));
 
     //! backup the file
-    while (std::getline(file, line)){ backup_file << line << "\n"; }
+    while (std::getline(file, line))
+    {
+        backup_file << line << "\n";
+    }
     backup_file.close();
     file.close();
 
@@ -286,13 +319,16 @@ void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerW
     while (std::getline(file, line))
     {
         auto words_on_line = separateLine(line);
-        if(line.empty()){
+        if (line.empty())
+        {
             continue;
         }
-        if(words_on_line.at(0) == "name" && line.substr(5, line.size()) == new_unit_name){
-           found_right_unit = true;
+        if (words_on_line.at(0) == "name" && line.substr(5, line.size()) == new_unit_name)
+        {
+            found_right_unit = true;
         }
-        if(found_right_unit && words_on_line.at(0) == datum_name){
+        if (found_right_unit && words_on_line.at(0) == datum_name)
+        {
             line = datum_name + " " + std::to_string(datum_value);
             found_right_unit = false;
         }
@@ -303,22 +339,19 @@ void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerW
 
     std::remove(filename.c_str());
     std::rename(tmp_filename.c_str(), filename.c_str());
-
-
 }
-
 
 void UnitMakerWindow::draw()
 {
 
-    auto& unit_data = p_unit_maker->unit_type2data_;
+    auto &unit_data = p_unit_maker->unit_type2data_;
     if (ImGui::TreeNode("Unit Maker"))
     {
         if (ImGui::BeginListBox("Unit Types"))
         {
-            for (auto& [unit_type_name, unit_type_ind] : p_unit_maker->unit_name2type_ind)
+            for (auto &[unit_type_name, unit_type_ind] : p_unit_maker->unit_name2type_ind)
             {
-                auto& type_data = unit_data.at(unit_type_ind);
+                auto &type_data = unit_data.at(unit_type_ind);
                 const bool is_selected = (selected_unit_ind == unit_type_ind);
                 if (ImGui::Selectable(unit_type_name.c_str(), is_selected))
                 {
@@ -339,11 +372,13 @@ void UnitMakerWindow::draw()
         {
 
             constexpr std::size_t unit_data_count = magic_enum::enum_count<Data2>();
-            for(int data_ind = 0; data_ind < unit_data_count; ++data_ind){
+            for (int data_ind = 0; data_ind < unit_data_count; ++data_ind)
+            {
                 auto data_type = magic_enum::enum_value<Data2>(data_ind);
                 const auto data_name = std::string(magic_enum::enum_name(data_type));
                 bool is_selected = false;
-                if(ImGui::InputFloat(data_name.c_str(), &(new_unit_data2[data_type]))){
+                if (ImGui::InputFloat(data_name.c_str(), &(new_unit_data2[data_type])))
+                {
                     changeUnitTypeDatum(new_unit_name, data_type, new_unit_data2[data_type]);
                 }
             }
@@ -366,11 +401,12 @@ void UnitMakerWindow::draw()
     //     }
     //     ImGui::TreePop();
     // }
-    
-    if(ImGui::Button("Register new unit")){
+
+    if (ImGui::Button("Register new unit"))
+    {
         p_unit_maker->registerUnitType(new_unit_data.radius, new_unit_data.mass, new_unit_data.weapon_type_ind,
-                                         new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
-                                         30.f, new_unit_name);
+                                       new_unit_data.r_vision, new_unit_data.max_vel, new_unit_data.rot_vel, 0,
+                                       30.f, new_unit_name);
         appendToUnitTypesFile();
     }
 
