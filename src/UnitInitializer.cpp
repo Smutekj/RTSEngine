@@ -31,20 +31,23 @@
         tc.angle = orient;
         tc.angle_vel = 0;        
 
-        PathFinderComponent pfc;
-        pfc.transform = tc;
 
         VisionComponent vsc;
         vsc.trans = tc;
         vsc.player_ind = player_ind;
         vsc.vision_radius_sq = unit_data.r_vision*unit_data.r_vision;
 
-        auto alpha = 2*(rand()/(float)RAND_MAX) + 0.1;
+        auto alpha = 1.0;//2*(rand()/(float)RAND_MAX) + 0.5;
         PhysicsComponent pc;
         pc.transform = tc;
         pc.mass = unit_data.mass * alpha*alpha*alpha;
         pc.radius = unit_data.radius * alpha;
         pc.player_ind = player_ind;
+        pc.lambda /= alpha;
+
+        PathFinderComponent pfc;
+        pfc.transform = tc;
+        pfc.radius = pc.radius;
 
         AttackComponent ac;
         ac.transform = tc;

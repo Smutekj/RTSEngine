@@ -122,15 +122,16 @@ PhysicsWindow::PhysicsWindow(PhysicsSystem &ps) : force_multipliers(ps.force_mul
     controled_data.at(Data::MAX_SPEED) = &ps.max_speed;
     force_multipliers[PhysicsSystem::Multiplier::ALIGN] = 1.0f;
     force_multipliers[PhysicsSystem::Multiplier::SEEK] = 1.0f;
-    force_multipliers[PhysicsSystem::Multiplier::SCATTER] = 0.01f;
+    force_multipliers[PhysicsSystem::Multiplier::SCATTER] = 0.1f;
     force_multipliers[PhysicsSystem::Multiplier::DECAY] = 1.0f;
     force_multipliers[PhysicsSystem::Multiplier::SEEK] = 1.0f;
-    force_multipliers[PhysicsSystem::Multiplier::REPULSE] = 0.01f;
-    force_multipliers[PhysicsSystem::Multiplier::PUSH] = 0.01f;
+    force_multipliers[PhysicsSystem::Multiplier::REPULSE] = 1.f;
+    force_multipliers[PhysicsSystem::Multiplier::PUSH] = 0.1f;
+    force_multipliers[PhysicsSystem::Multiplier::VELOCITY] = 2.0;
 
     for (auto &[multiplier_type, value] : force_multipliers)
     {
-        mulitplier2slider_min_max[multiplier_type] = {0.01f, 2.f};
+        mulitplier2slider_min_max[multiplier_type] = {0.0f, 5.f};
     }
 }
 

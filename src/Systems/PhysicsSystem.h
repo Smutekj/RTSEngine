@@ -24,7 +24,8 @@ struct PhysicsSystem : System2{
         SCATTER,
         ALIGN,
         SEEK,
-        DECAY
+        DECAY,
+        VELOCITY
     };
 
     std::unordered_map<Multiplier, float> force_multipliers;
@@ -33,7 +34,7 @@ struct PhysicsSystem : System2{
     std::unique_ptr<NeighbourSearcherContext<PhysicsComponent, InteractionData>> p_ns_;
     Edges* p_map_;
 
-    float max_speed = 1.0f;
+    float max_speed = 25.0f;
 
     const float dt = 1/60.f;
 

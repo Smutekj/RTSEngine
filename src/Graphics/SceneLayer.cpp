@@ -658,8 +658,8 @@ VisionLayer::VisionLayer()
 void VisionLayer::drawFOW(sf::RenderWindow &window, sf::VertexArray &fow_verticess)
 {
 
-    const auto height0 = 1920;
-    const auto width0 = 1080;
+    const auto height0 = window.size.y;
+    const auto width0 = window.size.x;
     const auto zoom_factor = 3.f;
     const auto old_view_matrix = window.view.matrix;
 
@@ -706,7 +706,7 @@ void VisionLayer::drawFOW(sf::RenderWindow &window, sf::VertexArray &fow_vertice
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0.0, 0.0, 1920, 1080);
+    glViewport(0.0, 0.0, width0, height0);
 
     auto mat = glm::mat4(1);
     downsample.use();

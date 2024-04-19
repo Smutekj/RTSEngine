@@ -29,12 +29,18 @@ void PhysicsSystem::update() {
                 phys_comp.transform.vel /= speed * max_speed ;
             }
             speed = norm(phys_comp.inertia_vel);
-            if( speed > 3*phys_comp.max_speed ){
-                phys_comp.inertia_vel *=3*phys_comp.max_speed / speed ;
+            if( speed > phys_comp.max_speed ){
+                // phys_comp.inertia_vel *= phys_comp.max_speed / speed ;
             }
 
             phys_comp.transform.vel += phys_comp.inertia_vel;
-            phys_comp.inertia_vel -= phys_comp.inertia_vel*phys_comp.lambda; //! velocity decay              
+            auto max_vel = phys_comp.max_speed * force_multipliers[Multiplier::VELOCITY] ;
+            speed = norm(phys_comp.transform.vel);
+            if( speed >max_vel){
+                phys_comp.transform.vel *=  max_vel / speed ;
+            }
+            auto decay_factor = std::min(1.f, phys_comp.lambda * force_multipliers[Multiplier::DECAY]);
+            phys_comp.inertia_vel -= phys_comp.inertia_vel*decay_factor; //! velocity decay              
         }
         auto delta_t =  std::chrono::duration_cast<std::chrono::microseconds>(clock.now() - t_start);
         // std::cout << delta_t << "\n";
