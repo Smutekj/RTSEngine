@@ -52,10 +52,11 @@ void Game::removeUnit(BoidInd u_ind)
 
 void Game::removeUnit(Entity e)
 {
+    assert(selection_.selected_agents.noDuplicates());
     selection_.selected_agents.removeEnt(e.ind);
     auto &gs = p_the_god_->getSystem<GraphicsSystem>(ComponentID::GRAPHICS);
     auto &g_comp = gs.getComponent<ComponentID::GRAPHICS, GraphicsComponent>(e);
-    // unit_scene.destroyInstanceOf(g_comp.graphics_ind, g_comp.instance_ind);
+    unit_scene.removeInstance(g_comp.instance_ind);
     p_the_god_->removeEntity(e);
 }
 
@@ -537,6 +538,6 @@ void Game::draw(sf::RenderWindow &window)
     p_map_grid->draw(window);
     // map_layer.draw(window);
 
-    // vision_layer.setup();
-    // vision_layer.draw2(window);
+    vision_layer.setup();
+    vision_layer.draw2(window);
 }

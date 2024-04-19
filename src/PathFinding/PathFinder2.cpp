@@ -98,7 +98,7 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
         }
         catch (std::exception &e)
         {
-            std::cout << "fucking hell, not again\n";
+            std::cout << e.what() << "\n";
             throw e;
         }
         return 1;
@@ -131,13 +131,16 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
         for (int j = 0; j < data.inds_to_update.size(); ++j)
         {
             auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[j]);
-            data.r_starts.at(j) = comps[compvec_ind].transform.r;
+            if(compvec_ind == -1){continue;}
+            data.r_starts.at(j) = comps.at(compvec_ind).transform.r;
         }
         futures_.at(thread_id) = std::async(std::launch::async, do_pathfinding, data, thread_id);
         thread_status_.at(thread_id) = THREAD_STATUS::RUNNING;
         n_paths_found++;
         for (const auto &entity_ind : data.inds_to_update)
         {
+            auto compvec_ind = entity2compvec_ind.at(entity_ind);
+            if(compvec_ind == -1){continue;}
             comps.at(entity2compvec_ind.at(entity_ind)).needs_update = true;
         }
         thread_id++;
@@ -166,6 +169,7 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
                 for (int i = 0; i < data.inds_to_update.size(); ++i)
                 {
                     auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[i]);
+                    if(compvec_ind == -1){continue;}
                     data.r_starts[i] = comps.at(compvec_ind).transform.r;
                 }
 
@@ -173,9 +177,11 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
                 thread_status_[thread_id] = THREAD_STATUS::RUNNING;
 
                 n_paths_found++;
-                for (const auto &ind : data.inds_to_update)
+                for (const auto &entity_ind : data.inds_to_update)
                 {
-                    comps.at(ind).needs_update = true;
+                    auto compvec_ind = entity2compvec_ind.at(entity_ind);
+                    if(compvec_ind == -1){continue;}
+                    comps.at(compvec_ind).needs_update = true;
                 }
                 to_update_pq.pop();
             }
@@ -455,20 +461,21 @@ void PathFinder2::doPathFinding(const std::vector<sf::Vector2f> r_coords, const 
     std::reverse(funnel.begin(), funnel.end());
     funnel.push_back({r_end, r_end});
 
-    auto path_and_portals = pathFromFunnel(r_start, r_end, max_radius_of_agent, funnel);
-    auto &path = path_and_portals.path;
-
     try
     {
+        auto path_and_portals = pathFromFunnel(r_start, r_end, max_radius_of_agent, funnel);
+        auto &path = path_and_portals.path;
+
         for (int i = 0; i < agent_indices.size(); ++i)
         {
             const auto comp_ind = entity2compvec_ind.at(agent_indices[i]);
+            if(comp_ind == -1){continue;}
             setPathOfAgent(comps.at(comp_ind), r_end, path_and_portals);
         }
     }
     catch (std::exception &e)
     {
-        std::cout << "wtf: " << e.what() << "\n";
+        std::cout << "funnel creation got fucked: " << e.what() << "\n";
         throw e;
     }
 
@@ -1938,7 +1945,8 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
     Vertex prev_left = static_cast<Vertex>(r_start);
     Vertex prev_right = static_cast<Vertex>(r_start);
     int i_first_same = 0;
-    bool is_first = true;
+    bool is_first_l = true;
+    bool is_first_r = true;
 
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_left;
     std::unordered_map<Vertex, sf::Vector2f, VertexHash> vertex2normal_right;
@@ -1951,17 +1959,19 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
     {
         auto next_r = static_cast<Vertex>(funnel[i].first);
         auto next_l = static_cast<Vertex>(funnel[i].second);
-        if(!vequal(next_l, prev_left))
+        if(!vequal(next_l, prev_left) || is_first_r)
         {
             unique_left.push_back(i);
             unique_left_points.push_back(next_l);
             prev_left = next_l;
+            is_first_r = false;
         }
-        if (!vequal(next_r, prev_right))
+        if (!vequal(next_r, prev_right) || is_first_l)
         {
             unique_right.push_back(i);
             unique_right_points.push_back(next_r);
             prev_right = next_r;
+            is_first_l = false;
         }
     }
 
@@ -2016,10 +2026,15 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
         }
     }
 
+    // if(right_portals.size() != left_portals.size()){
+    //     smoothed_path.push_back(r_end);
+    //     portals.push_back(Edgef());
+    //     return path_and_portals;
+    // }
     // dumpFunnelToFile2(unique_left_points, unique_right_points, "funnel-test-unique.dat");
     // dumpFunnelToFile(funnel, 3, "funnel-test.dat");
 
-
+    try{
     left_portals.push_back(Edgef());
     right_portals.push_back(Edgef());
     for (int i = 1; i < funnel.size(); ++i)
@@ -2096,6 +2111,11 @@ PathFinder2::PathAndPortals PathFinder2::pathFromFunnel(const sf::Vector2f r_sta
                 continue;
             }
         }
+    }
+    }
+    catch(std::exception& e){
+        std::cout << "a" << e.what();
+        throw e;
     }
     smoothed_path.push_back(r_end);
     // dumpPathToFile(smoothed_path, 3, "path-test.dat");

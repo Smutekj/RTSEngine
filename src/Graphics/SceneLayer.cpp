@@ -537,7 +537,7 @@ UnitLayer::UnitLayer() : prototype({0, 0}, {1, 1}, {255, 0, 0})
     glGenBuffers(1, &instanceVBO);
     glBindVertexArray(prototype.quadVAO2);
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit) * 7, transforms.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(InstancedDataUnit), transforms.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     //! create attribute pointers based on id maybe?

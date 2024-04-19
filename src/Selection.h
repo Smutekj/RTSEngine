@@ -17,9 +17,18 @@ struct Selection{
         // if (player_ind != data.at(ind).transform) {
         //     continue;
         // }
-        if (isInRect(data.at(ent.ind).transform.r, lower_left, upper_right)) {
+        if (isInRect(data.at(ent.ind).transform.r, lower_left, upper_right)
+              && !selected_agents.containsEnt(ent.ind)) {
             selected_agents.insert(ent.ind, ent.ind);
         }
+        assert(selected_agents.noDuplicates());
+    }
+
+    assert(selected_agents.noDuplicates());
+    std::unordered_set<int> unique_ents; 
+    for (const auto ent : god.active_entities_) {
+
+
     }
 }
 
