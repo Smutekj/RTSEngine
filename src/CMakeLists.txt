@@ -31,10 +31,11 @@ list(TRANSFORM pathfinding_objs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/PathFinding/
 list(TRANSFORM pathfinding_hdrs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/PathFinding/ )
 
 ###### GUI ###### 
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../imgui-docking/)
 set(gui_hdrs  imgui.h backends/imgui_impl_glfw.h backends/imgui_impl_opengl3.h )
 set(gui_objs imgui.cpp backends/imgui_impl_glfw.cpp backends/imgui_impl_opengl3.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp) 
-list(TRANSFORM gui_hdrs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/../imgui/ )
-list(TRANSFORM gui_objs PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/../imgui/ )
+list(TRANSFORM gui_hdrs PREPEND ${IMGUI_DIR} )
+list(TRANSFORM gui_objs PREPEND ${IMGUI_DIR} )
 
 
 set(graphic_hdrs Utils.hpp Text.hpp Font.hpp SceneLayer.h Image.h
@@ -70,8 +71,10 @@ add_executable(
         ${objs} ${game_objs}   ${systems_objs} ${pathfinding_objs} ${gui_objs}
                               ${hdrs} ${game_hdrs}  ${systems_hdrs} ${pathfinding_hdrs}
                                ${gui_hdrs} ${graphics_hdrs} ${graphics_objs}
-                )
-include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} lib ../imgui ../imgui/backends)
+         
+         
+                              )
+include_directories( ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} lib ${IMGUI_DIR} ${IMGUI_DIR}/backends )
 
 if(OpenMP_CXX_FOUND)
 target_link_libraries(Boids PRIVATE  ${GLEW_LIBRARIES} glfw OpenMP::OpenMP_CXX ${FREETYPE_LIBRARIES})

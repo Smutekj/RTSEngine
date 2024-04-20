@@ -120,7 +120,7 @@ void Game::moveView(sf::RenderWindow &window)
 {
     auto &view = window.view;
     auto vp1 = window.getViewport(view);
-    // auto vp2 = view.getViewport();
+
     const sf::Vector2f view_size = {view.width, view.height}; // * (view.getViewport().width);
     const auto left_border = window.getViewport(view).left;
     const auto right_border = left_border + window.getViewport(view).width;

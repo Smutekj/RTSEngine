@@ -114,8 +114,13 @@ int main() {
 
             dbg.draw(window, real_fps, *p_cdt, *game.p_map_grid);
 
+            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup_current_context);
 
             glfwSwapBuffers(window.handle);
+
 
             // only set lastFrameTime when you actually draw something
             if(frame_i++ == 120){

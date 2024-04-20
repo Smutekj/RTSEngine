@@ -45,7 +45,8 @@ UI::UI(sf::RenderWindow &window, Game &game, VisionSystem &fow, DebugInfo &dbg)
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-    // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; 
 
     // // // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window.handle, true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
@@ -93,8 +94,6 @@ void UI::showWindow()
 void UI::draw(sf::RenderWindow &window)
 {
 
-    // ImGui::ShowDemoWindow(&a);
-
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -110,11 +109,13 @@ void UI::draw(sf::RenderWindow &window)
 
     for (auto &[window_type, p_window] : windows)
     {
-        if (is_active[window_type])
+        if (is_active[window_type]){
             p_window->draw();
+        }
     }
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        
 }
 
 PhysicsWindow::PhysicsWindow(PhysicsSystem &ps) : force_multipliers(ps.force_multipliers), UIWindow("Physics")
@@ -344,7 +345,7 @@ void UnitMakerWindow::changeUnitTypeDatum(std::string unit_type_name, UnitMakerW
 
 void UnitMakerWindow::draw()
 {
-
+    ImGui::Begin("Unit Maker");
     auto &unit_data = p_unit_maker->unit_type2data_;
     if (ImGui::TreeNode("Unit Maker"))
     {
@@ -413,6 +414,8 @@ void UnitMakerWindow::draw()
 
     ImGui::InputText("new unit name", new_unit_name.data(), 500);
     p_unit_maker->selected_unit_type_ind = selected_unit_ind;
+
+    ImGui::End();
 }
 
 UnitMakerWindow::~UnitMakerWindow() {}
