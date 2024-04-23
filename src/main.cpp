@@ -30,28 +30,14 @@ constexpr float FRAME_RATE = 60;
 
 
 int main() {
-
-    // auto a = main2();
     const auto& BOX = Geometry::BOX;
     const auto& N_CELLS = Geometry::N_CELLS;
 
-    // sf::ContextSettings settings;
-
     sf::RenderWindow window({RES_X, RES_Y}); //,
-    // // window.setFramerateLimit(FRAME_RATE);
-    // window.view.width =  static_cast<float>(RES_X)/RES_Y * Geometry::BOX[1] ;
-    // window.view.height = Geometry::BOX[1];
-    // window.view.r_center = {0,0};//{Geometry::BOX[0]/2.f, Geometry::BOX[1]/2.f};
 
     sf::Vector2f box_size = {static_cast<float>(BOX[0]), static_cast<float>(BOX[1])};
     sf::Vector2i n_cells = {N_CELLS[0], N_CELLS[1]};
     sf::Vector2f cell_size = {static_cast<float>(BOX[0] / n_cells.x), static_cast<float>(BOX[1] / n_cells.y)};
-
-    // auto view = window.getView();
-    // view.setViewport({0.1f, 0.0f, 0.9f, 1.0f});
-    // view.setCenter(box_size / 2.f);
-    // view.setSize(box_size.x, box_size.x * (1080.f / 1920.f));
-    // window.setView(view);
 
     //! time and clocks stuff
     const auto fps = 60; //! fixed fps
@@ -72,23 +58,6 @@ int main() {
     int frame_i = 0;
     unsigned long long time_of_n_frames = 0;
     float real_fps = fps;
-
-    Square map_square(box_size/2.f, box_size, sf::Color(255, 0, 0, 66));
-    
-
-
-    sf::RectangleShape rect({50, 500});
-    rect.setFillColor(sf::Color::Black);
-    // window.view = View();
-
-
-    sf::ConvexShape tri(3);
-    tri.setPoint(0, {0, 0});
-    tri.setPoint(1, {Geometry::CELL_SIZE, 0});
-    tri.setPoint(2, {Geometry::CELL_SIZE, Geometry::CELL_SIZE});
-    tri.setFillColor(sf::Color::Red);
-    tri.setPosition(Geometry::BOX[0]/2, Geometry::BOX[1]/2);
-
     double last_update_time = 0;
 
     glViewport(0.0, 0.0, window.size.x, window.size.y);
