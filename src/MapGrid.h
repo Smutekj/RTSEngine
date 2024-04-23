@@ -23,7 +23,6 @@ namespace Mesh{
 class Triangulation;
 }
 
-
 struct Graph;
 
 struct Building {
@@ -36,8 +35,6 @@ struct Building {
     u_int16_t graphics_id = 0;
     Graph* p_graph = nullptr;
     int instance_id = -1;
-
-    
 
     explicit Building() = default;
     Building(const sf::Vector2i& center_cell_coords, const sf::Vector2f& cell_size) {
@@ -129,26 +126,16 @@ class MapGrid : public Grid {
 
     std::shared_ptr<Edges>& getEdges() { return p_edges_; }
 
-    bool isBoundaryWallTile(int cell_index);
-    bool isBoundaryWallTile(int cell_index, Direction dir);
     bool isBoundaryWallTileV2(int cell_index, Direction dir);
-    WallType findWallType(int cell_index);
-
-    bool isInnerBoundaryTile(int cell_index);
-
+    
     void removeSharpCorners();
     void sawOffCorners();
-    void updateBoundaryTypes();
     void updateBoundaryTypes2();
     void updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_max);
-    void updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_max);
     void changeToWater(sf::Vector2i n_first, sf::Vector2i n_max);
-    void extractEdgesFromTiles(Triangulation& cdt);
     void extractEdgesFromTilesV2(Triangulation& cdt);
-    void extractVerticesForDrawing(Triangulation& cdt, std::vector<TriInd>& tri_ind2component);
-    void extractVerticesForDrawing2(const Triangulation& cdt, const Edges& edge_lord);
-
-
+    void extractVerticesForDrawing();
+    
     void buildWall(sf::Vector2f wall_center, sf::Vector2i square_size);
     bool buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation& cdt);
     bool buildBuilding(sf::Vector2f building_center, int building_id, Triangulation& cdt);
@@ -161,9 +148,7 @@ class MapGrid : public Grid {
 
     sf::Vector2i drawProposedBuilding(sf::RenderWindow& window, sf::Vector2f building_center,
                                       sf::Vector2i building_size);
-    void drawProposedWalls(sf::Vector2f center, sf::Vector2f max_coords,
-                                    std::vector<sf::Vector2f>& function_values, const float width);
-
+    
     void updateTexture();
     void createRandomBlob(sf::Vector2i start_coords){
         
@@ -216,7 +201,6 @@ class MapGrid : public Grid {
 private:
     sf::RenderTexture map_texture;
     sf::RectangleShape map_rect;
-
 };
 
 

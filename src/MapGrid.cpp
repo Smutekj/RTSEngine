@@ -89,49 +89,7 @@ Direction MapGrid::countclockDirection(Direction dir) { return Direction{((dir -
 Direction MapGrid::clockDirection(Direction dir) { return Direction{(dir + 1) % 8}; }
 Direction MapGrid::opposite(Direction dir) { return Direction{(dir + 4) % 8}; }
 
-bool MapGrid::isBoundaryWallTile(int cell_index)
-{
-    bool is_not_ground = tiles.at(cell_index) != TileType::GROUND;
-    bool up_is_ground = tiles.at(cell_index - n_cells_.x) == TileType::GROUND;
-    bool down_is_ground = tiles.at(cell_index + n_cells_.x) == TileType::GROUND;
-    bool left_is_ground = tiles.at(cell_index + 1) == TileType::GROUND;
-    bool right_is_ground = tiles.at(cell_index - 1) == TileType::GROUND;
-    if (grid2walltype.count(cell_index) > 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-    //    if(is_traingle) {return true;} //! Triangles can lie only at boundary
-
-    return is_not_ground and (up_is_ground or down_is_ground or left_is_ground or right_is_ground);
-}
-
-bool MapGrid::isBoundaryWallTile(int cell_index, Direction dir)
-{
-    bool is_not_ground = tiles.at(cell_index) != TileType::GROUND;
-    bool next_is_ground = tiles.at(cell_index + delta_inds[dir]) == TileType::GROUND;
-    bool next_is_triangle = false;
-    auto a = cellCoords(cell_index);
-    if (grid2walltype.count(cell_index + delta_inds[dir]) > 0)
-    {
-        next_is_triangle = grid2walltype[cell_index + delta_inds[dir]] % 2 == 1;
-    }
-    bool is_triangle = false;
-    bool is_cartesian = dir % 2 == 0;
-    if (grid2walltype.count(cell_index) > 0)
-    {
-        is_triangle = grid2walltype[cell_index] % 2 == 1;
-    }
-    if (is_triangle)
-    {
-        return true; //! is_cartesian;
-    }
-    return (is_not_ground and (next_is_ground));
-}
-
+//! determines if a cell at \p cell_index is a boundary tile with direction dir
 bool MapGrid::isBoundaryWallTileV2(int cell_index, Direction dir)
 {
     bool is_not_ground = tiles.at(cell_index) != TileType::GROUND;
@@ -149,27 +107,7 @@ bool MapGrid::isBoundaryWallTileV2(int cell_index, Direction dir)
     return (is_not_ground and (next_is_ground));
 }
 
-MapGrid::WallType MapGrid::findWallType(int cell_index)
-{
-    if (!isBoundaryWallTile(cell_index))
-    {
-        throw std::runtime_error("tile at cell_index: " + std::to_string(cell_index) + " is not at a boundary!");
-    }
-
-    return grid2walltype[cell_index];
-}
-
-bool MapGrid::isInnerBoundaryTile(int cell_index)
-{
-    bool is_not_ground = tiles.at(cell_index) == TileType::BUILDING;
-    bool up_is_ground = tiles.at(cell_index - n_cells_.x) == TileType::GROUND;
-    bool down_is_ground = tiles.at(cell_index + n_cells_.x) == TileType::GROUND;
-    bool left_is_ground = tiles.at(cell_index + 1) == TileType::GROUND;
-    bool right_is_ground = tiles.at(cell_index - 1) == TileType::GROUND;
-
-    return is_not_ground and down_is_ground;
-}
-
+//! \brief cleans map by changing sharp corners to triangular corners
 void MapGrid::removeSharpCorners()
 {
 
@@ -221,6 +159,8 @@ void MapGrid::removeSharpCorners()
     }
 }
 
+//! \brief updates information about which cells on a mapgrid are boundary cells and what are their directions
+//! \brief looks only at cells starting from \p n_first going \p n_max cells right-down
 void MapGrid::updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_max)
 {
 
@@ -319,7 +259,7 @@ void MapGrid::updateBoundaryTypesLocally(sf::Vector2i n_first, sf::Vector2i n_ma
     }
 }
 
-
+//! \brief I had some plans with this but fuck that right now!
 void MapGrid::changeToWater(sf::Vector2i n_first, sf::Vector2i n_max)
 {
 
@@ -341,112 +281,7 @@ void MapGrid::changeToWater(sf::Vector2i n_first, sf::Vector2i n_max)
 }
 
 
-void MapGrid::updateBoundaryTypesLocally2(sf::Vector2i n_first, sf::Vector2i n_max)
-{
-
-    //! remove thin squares
-    for (int dj = 0; dj < n_max.y - 1; ++dj)
-    {
-        for (int di = 0; di < n_max.x - 1; ++di)
-        {
-            const auto i = n_first.x + di;
-            const auto j = n_first.y + dj;
-            if (i >= n_cells_.x - 1 or j >= n_cells_.y - 1)
-            {
-                continue;
-            };
-            const auto cell_index = j * n_cells_.x + i;
-
-            const auto t_left = tiles[cell_index + delta_inds[Direction::LEFT]];
-            const auto t_right = tiles[cell_index + delta_inds[Direction::RIGHT]];
-            const auto t_up = tiles[cell_index + delta_inds[Direction::UP]];
-            const auto t_down = tiles[cell_index + delta_inds[Direction::DOWN]];
-            auto &t = tiles[cell_index];
-
-            if (t == TileType::WALL)
-            {
-                int n_walls_around = (t_left == TileType::WALL) + (t_right == TileType::WALL) +
-                                     (t_down == TileType::WALL) + (t_up == TileType::WALL);
-
-                bool has_wall_left_right = (t_left == TileType::WALL and t_right == TileType::WALL) and
-                                           (t_down == TileType::GROUND and t_up == TileType::GROUND);
-
-                bool has_wall_above_below = (t_left == TileType::GROUND and t_right == TileType::GROUND) and
-                                            (t_down == TileType::WALL and t_up == TileType::WALL);
-
-                if (n_walls_around <= 1 or has_wall_left_right or has_wall_above_below)
-                {
-                    t = TileType::GROUND;
-                }
-            }
-        }
-    }
-
-    //! fill in holes
-    for (int dj = 0; dj < n_max.y - 1; ++dj)
-    {
-        for (int di = 0; di < n_max.x - 1; ++di)
-        {
-            const auto i = n_first.x + di;
-            const auto j = n_first.y + dj;
-            if (i >= n_cells_.x - 1 or j >= n_cells_.y - 1)
-            {
-                continue;
-            };
-            const auto cell_index = j * n_cells_.x + i;
-
-            const auto t_left = tiles[cell_index + delta_inds[Direction::LEFT]];
-            const auto t_right = tiles[cell_index + delta_inds[Direction::RIGHT]];
-            const auto t_up = tiles[cell_index + delta_inds[Direction::UP]];
-            const auto t_down = tiles[cell_index + delta_inds[Direction::DOWN]];
-            auto &t = tiles[cell_index];
-
-            if (t == TileType::GROUND)
-            {
-                int n_walls_around = (t_left == TileType::WALL) + (t_right == TileType::WALL) +
-                                     (t_down == TileType::WALL) + (t_up == TileType::WALL);
-
-                bool has_wall_left_right = (t_left == TileType::WALL and t_right == TileType::WALL) and
-                                           (t_down == TileType::GROUND and t_up == TileType::GROUND);
-
-                bool has_wall_above_below = (t_left == TileType::GROUND and t_right == TileType::GROUND) and
-                                            (t_down == TileType::WALL and t_up == TileType::WALL);
-
-                if (n_walls_around >= 3)
-                {
-                    t = TileType::WALL;
-                }
-            }
-        }
-    }
-
-    //map_texture.clear(sf::Color::Transparent);
-
-    for (int dj = 0; dj < n_max.y - 1; ++dj)
-    {
-        for (int di = 0; di < n_max.x - 1; ++di)
-        {
-            const auto i = n_first.x + di;
-            const auto j = n_first.y + dj;
-            if (i >= n_cells_.x - 1 or j >= n_cells_.y - 1)
-            {
-                continue;
-            };
-            const auto cell_index = j * n_cells_.x + i;
-            if (tiles[cell_index] == TileType::WALL)
-            {
-                wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
-                wall_rect.setFillColor(sf::Color::Red);
-                // wall_rect.setScale({5, 5});
-                // walls_drawable_.push_back(wall_rect);
-                // map_texture.draw(wall_rect); // or any other drawable
-            }
-        }
-    }
-
-    //! draw walls to map texture
-}
-
+//! \brief fills holes in mapgrid and removes cells that just one neighbour (they are too sharp...)
 void MapGrid::updateBoundaryTypes2()
 {
 
@@ -518,7 +353,6 @@ void MapGrid::updateBoundaryTypes2()
 void MapGrid::sawOffCorners()
 {
 
-    // walls_drawable_.clear();
 
     for (int j = 1; j < n_cells_.y - 1; ++j)
     {
@@ -596,9 +430,8 @@ void MapGrid::sawOffCorners()
 }
 
 
-//! \brief reads current tiles and draws corresponding shapes on a texgture.  
+//! \brief reads current tiles and draws corresponding shapes on a texture.  
 void MapGrid::updateTexture(){
-
 
     for (int j = 1; j < n_cells_.y - 1; ++j)
     {
@@ -637,222 +470,6 @@ void MapGrid::updateTexture(){
     }
 }
 
-void MapGrid::updateBoundaryTypes()
-{
-
-    grid2walltype.clear();
-
-    for (int j = 1; j < n_cells_.y - 1; ++j)
-    {
-        for (int i = 1; i < n_cells_.x - 1; ++i)
-        {
-            auto cell_index = j * n_cells_.x + i;
-            auto t11 = tiles[cell_index + delta_inds[Direction::LEFTUP]];
-            auto t12 = tiles[cell_index + delta_inds[Direction::UP]];
-            auto t13 = tiles[cell_index + delta_inds[Direction::RIGHTUP]];
-
-            auto t21 = tiles[cell_index + delta_inds[Direction::LEFT]];
-            auto t22 = tiles[cell_index];
-            auto t23 = tiles[cell_index + delta_inds[Direction::RIGHT]];
-
-            auto t31 = tiles[cell_index + delta_inds[Direction::LEFTDOWN]];
-            auto t32 = tiles[cell_index + delta_inds[Direction::DOWN]];
-            auto t33 = tiles[cell_index + delta_inds[Direction::RIGHTDOWN]];
-
-            if (t22 != TileType::GROUND)
-            {
-                bool ur_is_free = (t23 == TileType::GROUND and t13 == TileType::GROUND and t12 == TileType::GROUND);
-                bool ul_is_free = (t21 == TileType::GROUND and t11 == TileType::GROUND and t12 == TileType::GROUND);
-                bool dr_is_free = (t23 == TileType::GROUND and t33 == TileType::GROUND and t32 == TileType::GROUND);
-                bool dl_is_free = (t21 == TileType::GROUND and t31 == TileType::GROUND and t32 == TileType::GROUND);
-                if (ur_is_free + ul_is_free + dr_is_free + dl_is_free == 1)
-                {
-                    if (ur_is_free)
-                    {
-                        grid2walltype[cell_index] = WallType::URTRIANGLE;
-                    }
-                    if (ul_is_free)
-                    {
-                        grid2walltype[cell_index] = WallType::ULTRIANGLE;
-                    }
-                    if (dr_is_free)
-                    {
-                        grid2walltype[cell_index] = WallType::DRTRIANGLE;
-                    }
-                    if (dl_is_free)
-                    {
-                        grid2walltype[cell_index] = WallType::DLTRIANGLE;
-                    }
-                    continue;
-                }
-
-                if (isBoundaryWallTileV2(cell_index, Direction::RIGHT))
-                {
-                    grid2walltype[cell_index] = WallType::SQUARERIGHT;
-                }
-                else if (isBoundaryWallTileV2(cell_index, Direction::LEFT))
-                {
-                    grid2walltype[cell_index] = WallType::SQUARELEFT;
-                }
-                else if (isBoundaryWallTileV2(cell_index, Direction::UP))
-                {
-                    grid2walltype[cell_index] = WallType::SQUAREUP;
-                }
-                else if (isBoundaryWallTileV2(cell_index, Direction::DOWN))
-                {
-                    grid2walltype[cell_index] = WallType::SQUAREDOWN;
-                }
-            }
-        }
-    }
-}
-
-void MapGrid::extractEdgesFromTiles(Triangulation &cdt)
-{
-    std::vector<bool> visited(n_cells_.x * n_cells_.y, false);
-
-    auto &edges = p_edges_->edges_;
-    auto &vertices = cdt.vertices_;
-    auto &edge_inds = p_edges_->edges2_;
-
-    Edgef e;
-    sf::Vector2i cell_coords;
-    int last_vertex_index;
-    Vertex vertex;
-
-    int n = n_cells_.x;
-    int m = n_cells_.y;
-
-    const auto cell_size = static_cast<int>(std::floor(cell_size_.x));
-
-    for (int j = 1; j < n_cells_.y - 1; ++j)
-    { //! look for horizontal edges
-        for (int i = 0; i < n_cells_.x; ++i)
-        {
-
-            auto cell_index = j * n_cells_.x + i;
-            if (!visited[cell_index] and isBoundaryWallTile(cell_index, Direction::UP))
-            {
-                auto start_cell_index = cell_index;
-                int n_iterations = 0;
-                if (grid2walltype[cell_index] % 2 == 1)
-                {
-                    cell_index += delta_inds[Direction::RIGHT];
-                    start_cell_index = cell_index;
-                }
-                auto direction = Direction::RIGHT;
-                auto normal_direction = Direction::UP;
-                last_vertex_index = vertices.size();
-                do
-                {
-                    n_iterations++;
-                    normal_direction = countclockDirection(countclockDirection(direction));
-                    visited[cell_index] = true;
-                    cell_coords = cellCoords(cell_index);
-                    e.l = cell_size_.x;
-                    if (direction <= 1)
-                    {
-                        vertex = {cell_coords.x, cell_coords.y};
-                    }
-                    else if (direction <= 3)
-                    {
-                        vertex = {(cell_coords.x + 1), cell_coords.y};
-                    }
-                    else if (direction <= 5)
-                    {
-                        vertex = {(cell_coords.x + 1), (cell_coords.y + 1)};
-                    }
-                    else
-                    {
-                        vertex = {cell_coords.x, (cell_coords.y + 1)};
-                    }
-
-                    e.from = asFloat(vertex);
-                    e.from *= static_cast<float>(cell_size);
-                    e.t = t_vectors[direction];
-                    p_edges_->vertices_.push_back(vertex);
-                    cdt.insertVertex(vertex, true);
-
-                    while (isBoundaryWallTile(cell_index + delta_inds[direction]))
-                    {
-                        if (tiles[cell_index] != tiles[cell_index + delta_inds[direction]])
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            if (grid2walltype[cell_index] != grid2walltype[cell_index + delta_inds[direction]])
-                            {
-                                break;
-                            }
-                        }
-                        cell_index += delta_inds[direction];
-                        visited[cell_index] = true;
-                        visited[cell_index + delta_inds[normal_direction]] = true;
-                        e.l += cell_size_.x;
-                        n_iterations++;
-                    }
-
-                    auto edge_direction = direction;
-                    if (direction % 2 == 1)
-                    { //! the direction is diagonal thus the edge is longer
-                        e.l *= std::sqrt(2.f);
-                    }
-                    if (direction != grid2walltype[cell_index])
-                    {
-                        e.from.x += static_cast<int>(std::floor(e.t.x * e.l));
-                        e.from.y += static_cast<int>(std::floor(e.t.y * e.l));
-                        e.t *= -1.f;
-                        edge_direction = opposite(direction);
-                    }
-
-                    edges.push_back(e);
-                    const VertInd last_ind = vertices.size() - 1;
-                    EdgeVInd edge_ind = {last_ind, last_ind + 1};
-                    edge_inds.push_back(edge_ind);
-
-                    int ix = cellCoords(cell_index).x;
-                    int iy = cellCoords(cell_index).y;
-                    size_t edge_grid_index;
-                    if (direction == Direction::RIGHT or direction == Direction::LEFT)
-                    {
-                        edge_grid_index =
-                            (direction == Direction::RIGHT) * iy + (direction == Direction::LEFT) * (iy + 1);
-                    }
-                    else if (direction == Direction::DOWN or direction == Direction::UP)
-                    {
-                        edge_grid_index =
-                            (direction == Direction::DOWN) * (ix + 1) + (direction == Direction::UP) * (ix);
-                    }
-                    else if (direction == Direction::RIGHTDOWN or direction == Direction::LEFTUP)
-                    {
-                        edge_grid_index = ix - iy + n_cells_.y - 1;
-                    }
-                    else
-                    {
-                        edge_grid_index = ix + iy;
-                    }
-
-                    p_edges_->edge_finders_.at(direction2Orientation(direction))
-                        ->insert(edges.size() - 1, edge_grid_index);
-
-                    if (n_iterations > n_cells_.x * n_cells_.y)
-                    {
-                        throw std::runtime_error("Boundary of the shape could not be found in !");
-                    }
-                } while (!(cell_index == start_cell_index and (direction == Direction::RIGHT or direction == RIGHTUP)));
-                edge_inds.back().to = last_vertex_index; //! The last vertex is the first one since the object is closed
-                                                         //! and we went around its boundary*/
-                                                         //                }
-            }
-        }
-    }
-
-    for (int e_ind = 0; e_ind < edge_inds.size(); ++e_ind)
-    {
-        cdt.insertConstraint(edge_inds[e_ind]);
-    }
-}
 
 Building &Building::operator=(const Building &b)
 {
@@ -978,22 +595,10 @@ void Building::intitializeEdges2(sf::Vector2i center_cell_coords, sf::Vector2f c
     }
 }
 
-
-void MapGrid::extractVerticesForDrawing2(const Triangulation &cdt, const Edges &edge_lord)
+//! \brief extracts 
+void MapGrid::extractVerticesForDrawing()
 {
 
-    const auto &edges = edge_lord.edges_;
-    const auto n_points = edges.size();
-    for (const auto &edge : edges)
-    {
-        // edge.from
-    }
-}
-
-void MapGrid::extractVerticesForDrawing(Triangulation &cdt, std::vector<TriInd> &tri_ind2component)
-{
-
-    const auto &triangles = cdt.triangles_;
     walls_vertices_.clear();
     sf::Color component_color = sf::Color::Blue;
     walls_vertices_.setPrimitiveType(sf::Triangles);
@@ -1042,11 +647,12 @@ void MapGrid::extractVerticesForDrawing(Triangulation &cdt, std::vector<TriInd> 
             }
         }
     }
-    std::cout << walls_vertices_.getVertexCount() << "\n";
-    // walls_drawable_.clear();
     updateTexture();
 };
 
+//! \brief extracts edges from map and buildings information and updates \p cdt accordingly
+//! \brief basically just scans map left-right, up-down, and diagonally
+//! \brief is shitty with some boilerplate but i don't give a damn at this point
 void MapGrid::extractEdgesFromTilesV2(Triangulation &cdt)
 {
     std::vector<bool> visited(n_cells_.x * n_cells_.y, false);
@@ -1319,6 +925,10 @@ void MapGrid::extractEdgesFromTilesV2(Triangulation &cdt)
     }
 }
 
+//! \brief builds building and updates triangulation if whole building does not lie on non-buildable place
+//! \param building_center position where i clicked (this should just be a grid point)
+//! \param building_size dimensions of the building
+//! \param cdt triangulation
 bool MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_size, Triangulation &cdt)
 {
     auto center_cell_coords = cellCoords(building_center);
@@ -1395,7 +1005,10 @@ bool MapGrid::buildBuilding(sf::Vector2f building_center, sf::Vector2i building_
     return true;
 }
 
-
+//! \brief builds building and updates triangulation if whole building does not lie on non-buildable place
+//! \param building_center position where i clicked (this should just be a grid point)
+//! \param building_id  id of the type of building inside building_manager
+//! \param cdt triangulation
 bool MapGrid::buildBuilding(sf::Vector2f building_center, int building_id, Triangulation &cdt)
 {
     
@@ -1476,7 +1089,9 @@ bool MapGrid::buildBuilding(sf::Vector2f building_center, int building_id, Trian
     return true;
 }
 
-
+//! \brief figures out which points and constraints to add to the \p cdt and then inserts them
+//! \brief it fucking sucks and i want to die but I am not rewriting it because i believe it works
+//! \returns inserted building (and some pain on my part)
 Building MapGrid::addBuildingEdgesToTriangulation(sf::Vector2f building_center, sf::Vector2i building_size, int corner_size,
                                                   Triangulation &cdt)
 {
@@ -1791,6 +1406,7 @@ void MapGrid::buildWall(sf::Vector2f wall_center, sf::Vector2i square_size)
     }
 }
 
+
 float fy(const float t, const std::vector<float> &cs, const std::vector<float> &ss)
 {
     float result = 0;
@@ -1874,44 +1490,6 @@ std::vector<sf::Vector2f> MapGrid::generateRandomWalls(sf::Vector2f center, sf::
     return function_values;
 }
 
-// void MapGrid::drawProposedWalls(sf::Vector2f center, sf::Vector2f max_coords,
-//                                 std::vector<sf::Vector2f> &function_values, const float width)
-// {
-
-//     const auto center_cell_coords = cellCoords(center);
-
-//     const auto NPOINTS = function_values.size() / 2;
-//     // walls_drawable_.clear();
-
-//     sf::ConvexShape wall_rect;
-
-//     const auto i_max = static_cast<int>(2 * max_coords.x / cell_size_.x);
-//     const auto j_max = static_cast<int>(max_coords.y / cell_size_.y);
-//     for (int i = 0; i < i_max; ++i)
-//     {
-//         for (int j = 0; j < j_max; ++j)
-//         {
-//             auto i_building = center_cell_coords.x - i_max / 2 + i;
-//             auto j_building = center_cell_coords.y - j_max / 2 + j;
-//             if (i_building <= 2 or i_building >= n_cells_.x - 3 or j_building <= 2 or j_building >= n_cells_.y - 3)
-//             {
-//                 continue;
-//             }
-//             const sf::Vector2f r = {i_building * cell_size_.x - cell_size_.x / 2.f,
-//                                     j_building * cell_size_.y - cell_size_.y / 2.f};
-//             const sf::Vector2f r_reduced = {(r.x - center.x) / (0.5f * max_coords.x),
-//                                             (r.y - center.y) / (0.5f * max_coords.y)};
-
-//             auto cell_index = n_cells_.x * j_building + i_building;
-//             if (is_in(r, function_values[0].x, function_values[NPOINTS - 1].x, NPOINTS, function_values))
-//             {
-//                 wall_rect.setPosition(i * cell_size_.x, j * cell_size_.y);
-//                 // walls_drawable_.push_back(wall_rect);
-//             }
-//         }
-//     }
-// }
-
 std::vector<sf::Vector2f> MapGrid::setWallsInFunction(sf::Vector2f center, sf::Vector2f max_coords,
                                                       std::vector<sf::Vector2f> &function_values, const float width)
 {
@@ -1950,48 +1528,6 @@ std::vector<sf::Vector2f> MapGrid::setWallsInFunction(sf::Vector2f center, sf::V
     return {};
 }
 
-// std::vector<sf::Vector2f> MapGrid::extractBoundaryFromTiles(Triangulation &cdt, Edges &edg) {
-//
-//     std::vector<bool> visited(n_cells_.x, n_cells_.y);
-//
-//     for (int j = 1; j < n_cells_.y - 1; ++j) {
-//         for (int i = 1; i < n_cells_.x - 1; ++i) {
-//             auto cell_index = j * n_cells_.x + i;
-//             if (!visited[cell_index] and isBoundaryWallTile( cell_index, Direction::UP)) { //! we found a
-//             boundary cell so we walk around the object and update edges
-//                 auto start_cell_index = cell_index;
-//                 int n_iterations = 0;
-//                 if (grid2walltype[cell_index] % 2 == 1) {
-//                     cell_index += delta_inds[Direction::RIGHT];
-//                     start_cell_index = cell_index;
-//                 }
-//             }
-//         }
-//     const auto i_max = static_cast<int>(2*max_coords.x/cell_size_.x);
-//     const auto j_max = static_cast<int>((max_y - min_y)/cell_size_.y);
-//     for(int i = 0; i < i_max; ++i){
-//         for(int j = 0; j < j_max; ++j){
-//             auto i_building = center_cell_coords.x - i_max/2 + i;
-//             auto j_building = center_cell_coords.y - j_max/2 + j;
-//             if(i_building<=2 or i_building>=n_cells_.x-3 or j_building<=2 or j_building>=n_cells_.y-3){
-//                 continue;
-//             }
-//             const sf::Vector2f r = {i_building*cell_size_.x - cell_size_.x/2.f, j_building*cell_size_.y -
-//             cell_size_.y/2.f} ; const sf::Vector2f r_reduced = {(r.x - center.x)/(0.5f*max_coords.x), (r.y -
-//             center.y)/(0.5f*max_coords.y)};
-//
-//             auto cell_index = n_cells_.x*j_building + i_building ;
-//             if( tiles.at(cell_index) == TileType::GROUND and is_in(r_reduced, cs, ss)){
-//                 tiles.at(cell_index) = TileType::WALL;
-//             }
-//             if(grid2walltype.count(cell_index)>0){
-//                 grid2walltype.erase(cell_index);
-//             }
-//         }
-//     }
-//     return function_values;
-// }
-
 sf::Vector2i MapGrid::drawProposedBuilding(sf::RenderWindow &window, sf::Vector2f building_center,
                                            sf::Vector2i building_size)
 {
@@ -2021,20 +1557,6 @@ sf::Vector2i MapGrid::drawProposedBuilding(sf::RenderWindow &window, sf::Vector2
     return lower_left_cell_coords - building_size / 2;
 }
 
-void MapGrid::setSprites()
-{
-
-    // for (auto &building : buildings_)
-    // {
-    //     building.contour.setTexture(&grass);
-    //     building.contour.setFillColor({15, 135, 251, 120});
-    // }
-    // for (auto &wall_tile : walls_drawable_)
-    // {
-    //     wall_tile.setTexture(&grass);
-    // }
-}
-
 void MapGrid::draw(sf::RenderWindow &window)
 {
 
@@ -2042,14 +1564,6 @@ void MapGrid::draw(sf::RenderWindow &window)
     auto& map_text = map_texture.texture_handle;
     
     map_rect.setTexture(map_text);
-
     map_rect.setFillColor(sf::Color::Transparent);
-
-    //wall_rect.draw(window);
     map_rect.draw(window);
-    // walls_vertices_.draw(window);
-    // for (const auto &wall_tile : walls_drawable_)
-    // {
-    //     window.draw(wall_tile);
-    // }
 }
