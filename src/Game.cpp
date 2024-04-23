@@ -19,37 +19,35 @@
 
 #include "MouseKeyboard.hpp"
 
+
+//! not sure where to put this right now?
+bool isKeyPressed(GLFWwindow *window, int key)
+{
+    int state = glfwGetKey(window, key);
+    return (state == GLFW_PRESS);
+}
+
+bool isButtonPressed(GLFWwindow *window, int button)
+{
+    int state = glfwGetMouseButton(window, button);
+    return state == GLFW_PRESS;
+}
+
+
+//! \brief updates mesh when static map changes
 void Game::updateTriangulation()
 {
     p_map_grid->sawOffCorners();
     p_map_grid->extractEdgesFromTilesV2(cdt);
     p_map_grid->addAllBuildingsToTriangulation(cdt);
     p_pathfinder_->update();
-    p_map_grid->extractVerticesForDrawing(cdt, p_pathfinder_->tri_ind2component_);
+    p_map_grid->extractVerticesForDrawing();
     map_layer.updateFromMap();
     auto &vs = p_the_god_->getSystem<VisionSystem>(ComponentID::VISION);
     vs.updateWallFromMap(*p_map_grid);
 }
 
-void readMazeFile(std::string maze_file_name, const int n, const int m)
-{
-    std::ifstream file(maze_file_name);
-    std::string text;
-    // Use a while loop together with the getline() function to read the file line by line
-    while (getline(file, text))
-    {
-    }
-}
-
-bool isKeyPressed(GLFWwindow *window, int key)
-{
-    int state = glfwGetKey(window, key);
-    return (state == GLFW_PRESS);
-}
-void Game::removeUnit(BoidInd u_ind)
-{
-}
-
+//! \brief removes entity \p from all systems in the game
 void Game::removeUnit(Entity e)
 {
     assert(selection_.selected_agents.noDuplicates());
@@ -59,10 +57,6 @@ void Game::removeUnit(Entity e)
     unit_scene.removeInstance(g_comp.instance_ind);
     p_the_god_->removeEntity(e);
 }
-
-// void Game::removeUnit(int entity_ind) {
-//     p_the_god_->removeEntity({0, entity_ind});
-// }
 
 void Game::addUnit(int player_ind, sf::Vector2f r, int unit_type_ind)
 {
@@ -111,11 +105,9 @@ Game::Game(Triangulation &cdt, sf::Vector2i n_cells, sf::Vector2f box_size)
 
     auto &vs = p_the_god_->getSystem<VisionSystem>(ComponentID::VISION);
     vision_layer.p_vs = &vs;
-
-    // makeOrbitingSquare4(scene);
 }
-int frame = 0;
 
+//! \brief moves view based on mouse position
 void Game::moveView(sf::RenderWindow &window)
 {
     auto &view = window.view;
@@ -155,12 +147,10 @@ void Game::moveView(sf::RenderWindow &window)
     {
         view.move(0, view_size.x / 100.f);
     }
-    // window.setView(view);
 }
 
 void Game::parseEvents(sf::RenderWindow &window, UI &ui)
 {
-
     sf::Event event;
     auto mouse_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
@@ -196,8 +186,6 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
         }
         if (event.type == sf::Event::MouseButtonPressed)
         {
-            // ui.onClick(window);
-
             if (event.mouseButton.button == sf::Mouse::Left)
             {
                 const auto mouse_coords = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -244,7 +232,6 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
         }
         else if (event.type == sf::Event::MouseMoved)
         {
-            // ui.onMouseHold(window);
             if (selection_pending)
             {
                 end_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -252,7 +239,6 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
         }
         else if (event.type == sf::Event::MouseButtonReleased)
         {
-            // ui.onRelease(window);
             if (selection_pending)
             {
                 end_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -283,7 +269,6 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
             {
                 view2.zoom(1. / 0.9f);
             }
-            // window.setView(view2);
         }
 
         if (bulding)
@@ -318,18 +303,6 @@ void Game::parseEvents(sf::RenderWindow &window, UI &ui)
     }
 }
 
-void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-    {
-    }
-}
-
-bool isButtonPressed(GLFWwindow *window, int button)
-{
-    int state = glfwGetMouseButton(window, button);
-    return state == GLFW_PRESS;
-}
 
 //! \brief parse events and normal input
 //! \note  right now this is just a placeholder code until I make a nice OOP solution with bindings and stuff
@@ -504,7 +477,6 @@ void Game::update(const float dt, sf::RenderWindow &window)
     {
         removeUnit({0, entity_ind});
         p_pathfinder_->onUnitRemoval({0, entity_ind});
-        // sound_module_.playSound(Sounds::ID::Pop);
     }
     to_kill.clear();
 
@@ -513,21 +485,6 @@ void Game::update(const float dt, sf::RenderWindow &window)
 
 void Game::draw(sf::RenderWindow &window)
 {
-    // attack_system_->draw(window);
-    // p_map_grid->draw(window);
-    // // world_.draw(window, *bc_);
-    // if (selection_pending)
-    // {
-    //     window.draw(mouse_selection);
-    // }
-
-    // p_the_god_->draw(window);
-
-    // buildings.draw(window);
-    // p_fow_->draw(this->selected_player, window);
-    // drawPath(window, path, portals);
-
-    // unit_scene.update();
     unit_scene.initialize();
     unit_scene.draw(0, window.view);
 
@@ -536,8 +493,7 @@ void Game::draw(sf::RenderWindow &window)
     building_scene.draw(window);
 
     p_map_grid->draw(window);
-    // map_layer.draw(window);
-
+ 
     vision_layer.setup();
     vision_layer.draw2(window);
 }

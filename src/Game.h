@@ -160,7 +160,6 @@ public:
     Game(Triangulation& cdt, sf::Vector2i n_cells, sf::Vector2f box_size);
 
     void addUnit(int player_ind, sf::Vector2f r, int unit_type_ind);
-    void removeUnit(BoidInd u_ind);
     void removeUnit(Entity e);
 
     void update(const float dt, sf::RenderWindow& win);
@@ -173,11 +172,9 @@ public:
 
   private:
     void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
     void moveView(sf::RenderWindow& window);
     void parseEvents(sf::RenderWindow& window, UI& ui);
     void updateTriangulation();
-
 };
 
 #endif // BOIDS_GAME_H
