@@ -206,7 +206,7 @@ public:
     }
 
 private:
-    void doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end, std::vector<PathFinderComponent> &comps,
+    void doPathFinding(const sf::Vector2f r_end, std::vector<PathFinderComponent> &comps,
                        std::array<int, N_MAX_ENTITIES> &entity2compvec_ind,
                        const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id);
 

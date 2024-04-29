@@ -10,7 +10,7 @@ PathFinder2::PathFinder2(Triangulation *cdt)
     : cdt_(cdt)
 {
     p_rtg_ = std::make_shared<ReducedTriangulationGraph>();
-    update_has_been_issued_.resize(N_MAX_NAVIGABLE_BOIDS, false);
+    // update_has_been_issued_.resize(N_MAX_NAVIGABLE_BOIDS, false);
     entity2update_group_ind_.fill(-1);
 }
 
@@ -89,12 +89,14 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
     // sf::Clock time;
     const int n_threads = std::thread::hardware_concurrency() - 1;
     thread_status_.resize(n_threads, THREAD_STATUS::FREE);
+    futures_.resize(n_threads);
 
-    std::function<int(const GroupPathData, int)> do_pathfinding = [this, &comps, &entity2compvec_ind](const GroupPathData data, int thread_id)
+    std::function<int(const GroupPathData, int)> do_pathfinding =
+     [this, &comps, &entity2compvec_ind](const GroupPathData data, int thread_id)
     {
         try
         {
-            doPathFinding(data.r_starts, data.r_end, comps, entity2compvec_ind, data.radius, data.inds_to_update, thread_id);
+            doPathFinding(data.r_end, comps, entity2compvec_ind, data.radius, data.inds_to_update, thread_id);
         }
         catch (std::exception &e)
         {
@@ -104,48 +106,14 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
         return 1;
     };
 
-    //! check that each entity is there at most once
-    std::unordered_set<int> ents;
-    for (const auto &group : to_update_groups_)
-    {
-        for (auto ind : group.inds_to_update)
-        {
-            ents.insert(ind);
-            assert(ents.count(ind) <= 1);
-        }
-    }
-
     int thread_id = 0;
     const int last = to_update_groups_.size() - 1;
 
     std::priority_queue to_update_pq(
         to_update_groups_.begin(), to_update_groups_.end(), [](const GroupPathData &gpd1, const GroupPathData &gpd2)
         { return dist2(gpd1.r_end, gpd1.r_starts[0]) < dist2(gpd2.r_end, gpd2.r_starts[0]); });
-    futures_.resize(n_threads);
 
-    // sf::Clock clock;
     int n_paths_found = 0;
-    for (int i = last; i >= std::max(last + 1 - n_threads, 0); --i)
-    {
-        auto data = to_update_pq.top();
-        for (int j = 0; j < data.inds_to_update.size(); ++j)
-        {
-            auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[j]);
-            if(compvec_ind == -1){continue;}
-            data.r_starts.at(j) = comps.at(compvec_ind).transform.r;
-        }
-        futures_.at(thread_id) = std::async(std::launch::async, do_pathfinding, data, thread_id);
-        thread_status_.at(thread_id) = THREAD_STATUS::RUNNING;
-        n_paths_found++;
-        for (const auto &entity_ind : data.inds_to_update)
-        {
-            auto compvec_ind = entity2compvec_ind.at(entity_ind);
-            if(compvec_ind == -1){continue;}
-            comps.at(entity2compvec_ind.at(entity_ind)).needs_update = true;
-        }
-        thread_id++;
-        to_update_pq.pop();
-    }
 
     bool all_threads_free = allThreadsFree(std::min(last + 1, n_threads));
     // auto run_time = clock.getElapsedTime().asMicroseconds();
@@ -166,23 +134,9 @@ void PathFinder2::updatePaths(std::vector<PathFinderComponent> &comps, std::arra
             if (thread_status_[thread_id] == THREAD_STATUS::FREE and !to_update_pq.empty())
             {
                 auto data = to_update_pq.top();
-                for (int i = 0; i < data.inds_to_update.size(); ++i)
-                {
-                    auto compvec_ind = entity2compvec_ind.at(data.inds_to_update[i]);
-                    if(compvec_ind == -1){continue;}
-                    data.r_starts[i] = comps.at(compvec_ind).transform.r;
-                }
-
                 futures_[thread_id] = std::async(std::launch::async, do_pathfinding, data, thread_id);
                 thread_status_[thread_id] = THREAD_STATUS::RUNNING;
-
                 n_paths_found++;
-                for (const auto &entity_ind : data.inds_to_update)
-                {
-                    auto compvec_ind = entity2compvec_ind.at(entity_ind);
-                    if(compvec_ind == -1){continue;}
-                    comps.at(compvec_ind).needs_update = true;
-                }
                 to_update_pq.pop();
             }
         }
@@ -314,10 +268,6 @@ void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
         futures_.at(thread_id) = std::async(std::launch::async, do_pathfinding, data, thread_id);
         thread_status_.at(thread_id) = THREAD_STATUS::RUNNING;
         n_paths_found++;
-        for (const auto &ind : data.inds_to_update)
-        {
-            update_has_been_issued_.at(ind) = false;
-        }
         thread_id++;
         to_update_pq.pop();
     }
@@ -350,10 +300,6 @@ void PathFinder2::updatePaths2(std::vector<PathFinderComponent> &comps,
                 thread_status_[thread_id] = THREAD_STATUS::RUNNING;
 
                 n_paths_found++;
-                for (const auto &ind : data.inds_to_update)
-                {
-                    update_has_been_issued_[ind] = false;
-                }
                 to_update_pq.pop();
             }
         }
@@ -439,13 +385,21 @@ void PathFinder2::setPathOfAgent(PathFinderComponent &comp, sf::Vector2f r_end, 
 
 // }
 
-void PathFinder2::doPathFinding(const std::vector<sf::Vector2f> r_coords, const sf::Vector2f r_end,
+void PathFinder2::doPathFinding(const sf::Vector2f r_end,
                                 std::vector<PathFinderComponent> &comps,
                                 std::array<int, N_MAX_ENTITIES> &entity2compvec_ind,
                                 const float max_radius_of_agent, const std::vector<int> agent_indices, const int thread_id)
 {
 
-    const auto r_start = r_coords.at(0);
+    sf::Vector2f r_start = {0,0};
+    float n_living = 0;
+    for(auto entity_ind : agent_indices){
+        auto comp_ind = entity2compvec_ind.at(entity_ind);
+        if(comp_ind == -1){continue;}
+        n_living++;
+        r_start += comps.at(comp_ind).transform.r;
+    }
+    r_start /= n_living;
     Funnel funnel;
 
     try
